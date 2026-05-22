@@ -1,4 +1,4 @@
-export type Provider = "stripe" | "paypal" | "toyyibpay";
+export type Provider = "sslcommerz";
 export type PaymentSource = "course" | "package" | "event" | "ecommerce" | "Donation";
 
 export type CreateSessionInput = {
