@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 
-export type PointSourceType = "event" | "quiz" | "task" | "manual" | "package" | "purchase" | "enrollment" | "course" | "lesson";
+export type PointSourceType = "event" | "quiz" | "task" | "manual" | "purchase" | "enrollment" | "course" | "lesson";
 
 export interface IPointLog {
   _id?: Types.ObjectId;

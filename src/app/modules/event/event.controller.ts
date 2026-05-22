@@ -6,7 +6,7 @@ import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import { EventServices } from "./event.service";
 import { IEvent } from "./event.interface";
-import { PackageServices } from "../Package/package.services";
+
 
 const create = catchAsync(async (req: Request, res: Response) => {
   const actor = req.user as JwtPayload;

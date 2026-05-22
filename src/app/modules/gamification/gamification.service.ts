@@ -7,7 +7,7 @@ import { Types } from "mongoose";
 type AwardInput = {
   userId: string;
   points: number;                         // >= 0 for awards
-  sourceType: "event" | "quiz" | "task" | "manual" | "package" | "purchase" | "enrollment" | "course" | "lesson";
+  sourceType: "event" | "quiz" | "task" | "manual" | "purchase" | "enrollment" | "course" | "lesson";
   reason?: string;
   courseId?: string;
   eventId?: string;

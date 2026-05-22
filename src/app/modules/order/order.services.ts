@@ -294,39 +294,7 @@ const createDonationCheckout = async (
 
   return { orderId: String(order._id), checkoutUrl: session.checkoutUrl };
 };
-/* ----------------------- PACKAGE CHECKOUT ----------------------- */
-const createCheckoutForPackage = async (input: {
-  packageId: string;
-  userId: string;
-  amount: number;
-  currency: string;
-  courseIds: string[];
-  name: Record<string, string>;
-}) => {
-  const order = await Order.create({
-    user: input.userId,
-    package: { id: input.packageId, name: input.name },
-    courseIds: input.courseIds,
-    price: input.amount,
-    currency: input.currency,
-    provider: "stripe",
-    status: "pending",
-    itemType: "package",
-  });
 
-  const session = await PaymentService.createCheckoutSession({
-    provider: "stripe",
-    orderId: String(order._id),
-    amount: input.amount * 100,
-    currency: input.currency,
-    packageId: input.packageId,
-    userId: input.userId,
-    source: "package",
-  });
-  order.providerSessionId = session.sessionId;
-  await order.save();
-  return { orderId: String(order._id), checkoutUrl: session.checkoutUrl };
-};
 
 /* ----------------------- ECOMMERCE CHECKOUT (CLIENT CART) ----------------------- */
 
@@ -612,7 +580,6 @@ const createCheckoutForEvent = async (input: {
 /* ----------------------- EXPORT ----------------------- */
 export const OrderServices = {
   createCheckout,
-  createCheckoutForPackage,
   startEcommerceCheckoutFromClient,
   getMyOrders,
   getOrderById,

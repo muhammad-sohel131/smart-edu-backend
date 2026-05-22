@@ -31,8 +31,7 @@ const orderEcommerceSchema = new Schema({
 
 const OrderSchema = new Schema<IOrder>({
     user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    itemType: { type: String, enum: ["course", "package", "event", "ecommerce", "Donation"], required: true },
-    package: { id: { type: String }, name: { type: Schema.Types.Mixed } },
+    itemType: { type: String, enum: ["course", "event", "ecommerce", "Donation"], required: true },
     course: { type: String },
     fund: {type: String},
     courseIds: [{ type: String }],
