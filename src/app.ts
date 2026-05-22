@@ -8,23 +8,12 @@ import { globalErrorHandle } from "./app/middlewares/globalErrorHandler";
 import { notFound } from "./app/middlewares/notFound";
 import { router } from "./app/routes";
 import "./app/config/passport";
-import { stripeWebhook } from "./app/modules/payment/payment.webhooks.controller";
+import "./app/config/passport";
 import { connectDatabase } from "./app/middlewares/connectDatabase";
 
 const app = express();
 
-// CRITICAL: Webhook routes MUST be defined BEFORE any body parsing middleware
-// Stripe needs the raw request body for signature verification
-app.post("/webhooks/stripe", express.raw({ type: "application/json", verify: (req, res, buf) => {
-  // Store raw body for Stripe signature verification
-  (req as any).rawBody = buf;
-} }), stripeWebhook);
 
-app.get("/webhooks/stripe", (req: Request, res: Response) => {
-  res.status(200).json({
-    message: "I am from stripe webhook GET endpoint",
-  });
-});
 
 
 // Now apply all other middleware AFTER webhook routes

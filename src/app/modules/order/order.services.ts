@@ -174,7 +174,7 @@ const resolvePrice = async (course: any, couponCode?: string) => {
 const createCheckout = async (
   courseId: string,
   userId: string,
-  provider: "stripe" | "paypal" | "toyyibpay",
+  provider: "sslcommerz",
   itemType: OrderSource,
   couponCode?: string,
   billingInfo?: {}
@@ -248,7 +248,7 @@ const createCheckout = async (
   const session = await PaymentService.createCheckoutSession({
     provider,
     orderId: String(order._id),
-    amount: price * 100,
+    amount: price,
     currency,
     courseId: String(course._id),
     userId: String(userId),
@@ -264,7 +264,7 @@ const createCheckout = async (
 const createDonationCheckout = async (
   fund: string,
   userId: string,
-  provider: "stripe" | "paypal" | "toyyibpay",
+  provider: "sslcommerz",
   amount: number
 ) => {
 
@@ -380,7 +380,7 @@ const startEcommerceCheckoutFromClient = async (input: any) => {
       provider: input?.payload?.provider,
       source: "ecommerce",
       orderId: String(order._id),
-      amount: total * 100,
+      amount: total,
       currency: input.currency || "USD",
       userId: input.userId,
     });
@@ -558,15 +558,15 @@ const createCheckoutForEvent = async (input: {
     event: input.eventId,
     price: input.amount,
     currency: input.currency,
-    provider: "stripe",
+    provider: "sslcommerz",
     status: "pending",
     itemType: "event",
   });
 
   const session = await PaymentService.createCheckoutSession({
-    provider: "stripe",
+    provider: "sslcommerz",
     orderId: String(order._id),
-    amount: input.amount * 100,
+    amount: input.amount,
     currency: input.currency,
     eventId: input.eventId,
     userId: input.userId,

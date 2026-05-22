@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { CreateSessionInput } from "./payment.types";
-import { StripeProvider } from "./providers/stripe";
-import { PaypalProvider } from "./providers/paypal";
-import { ToyyibPayProvider } from "./providers/toyyibpay";
+import { SSLCommerzProvider } from "./providers/sslcommerz";
 import { Order } from "../order/order.model";
 import { EnrollmentServices } from "../enrollment/enrollment.services";
 import httpStatus from "http-status-codes";
@@ -13,9 +11,7 @@ import { Course } from "../course/course.model";
 import { Event } from "../event/event.model";
 
 const providers = {
-  stripe: new StripeProvider(),
-  paypal: new PaypalProvider(),
-  toyyibpay: new ToyyibPayProvider()
+  sslcommerz: new SSLCommerzProvider()
 } as const;
 
 const createCheckoutSession = async (input: CreateSessionInput) => {
@@ -27,7 +23,7 @@ const createCheckoutSession = async (input: CreateSessionInput) => {
 
 // Webhook handlers (normalized)
 const markPaidFromWebhook = async (
-  provider: "stripe" | "paypal" | "toyyibpay",
+  provider: "sslcommerz",
   normalized: {
     providerPaymentId: string;
     providerSessionId?: string;
@@ -67,7 +63,7 @@ const markPaidFromWebhook = async (
   }
 
   // Validate payment amount (for Stripe, amount is in cents)
-  const expectedAmount = provider === "stripe" ? order.price * 100 : order.price;
+  const expectedAmount = order.price;
   if (Math.abs(normalized.amount - expectedAmount) > 1) { // Allow 1 cent/unit difference for rounding
     console.error(`❌ Amount mismatch - Expected: ${expectedAmount}, Received: ${normalized.amount}`);
     throw new AppError(httpStatus.BAD_REQUEST, "Payment amount does not match order amount");

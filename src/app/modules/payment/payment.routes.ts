@@ -3,9 +3,9 @@ import { paymentWebhooksController } from "./payment.webhooks.controller";
 
 const router = Router();
 
-// Public endpoints (providers call these); add raw body + signature verification in app.ts if needed
-router.post("/webhooks/stripe", paymentWebhooksController.stripeWebhook);
-router.post("/webhooks/paypal", paymentWebhooksController.paypalWebhook);
-router.post("/webhooks/toyyibpay", paymentWebhooksController.toyyibpayWebhook);
+router.post("/webhooks/sslcommerz/success", paymentWebhooksController.sslcommerzSuccess);
+router.post("/webhooks/sslcommerz/fail", paymentWebhooksController.sslcommerzFail);
+router.post("/webhooks/sslcommerz/cancel", paymentWebhooksController.sslcommerzCancel);
+router.post("/webhooks/sslcommerz/ipn", paymentWebhooksController.sslcommerzIpn);
 
 export const PaymentRoutes = router;
