@@ -23,7 +23,7 @@ const CourseCategorySchema = new Schema<ICourseCategory>(
   { timestamps: true, versionKey: false }
 );
 
-CourseCategorySchema.index({ title: 1 }, { unique: true });
+
 CourseCategorySchema.index({ isDeleted: 1 });
 
 export const CourseCategory = models.CourseCategory || model<ICourseCategory>("CourseCategory", CourseCategorySchema);

@@ -34,7 +34,7 @@ const schoolSchema = new Schema<ISchool>({
 
 // Create indexes
 schoolSchema.index({ name: 1, city: 1 }, { unique: true });
-schoolSchema.index({ code: 1 }, { unique: true, sparse: true });
+
 schoolSchema.index({ city: 1 });
 schoolSchema.index({ isActive: 1 });
 
