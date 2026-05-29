@@ -1,5 +1,5 @@
 export type Provider = "sslcommerz";
-export type PaymentSource = "course" | "package" | "event" | "ecommerce" | "Donation";
+export type PaymentSource = "course" | "event" | "ecommerce" | "Donation";
 
 export type CreateSessionInput = {
   provider: Provider;
@@ -10,7 +10,6 @@ export type CreateSessionInput = {
   amount: number;
   currency: string;
   courseId?: string;
-  packageId?: string;
   eventId?: string;
 
 

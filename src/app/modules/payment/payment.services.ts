@@ -125,26 +125,6 @@ const markPaidFromWebhook = async (
       },
       { new: true }
     );
-  } else if (order.itemType === "package" && order.courseIds?.length) {
-    // Multiple course package purchase
-    for (const courseId of order.courseIds) {
-      course = await Course.findById(courseId)
-      await EnrollmentServices.enrollSelf(String(courseId), normalized.userId, course.instructor);
-      await Course.findByIdAndUpdate(
-        courseId,
-        {
-          $inc: { noOfStudents: 1 },
-        },
-        { new: true }
-      );
-    }
-
-    await GamificationServices.addPoints({
-      userId: normalized.userId,
-      points: 50,
-      sourceType: order.itemType,
-      reason: "Package purchase and enrollment",
-    });
   }
 
   if (order.itemType === "event") {
