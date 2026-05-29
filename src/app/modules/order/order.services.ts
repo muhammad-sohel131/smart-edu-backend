@@ -433,12 +433,12 @@ const getOrderBySessionId = async (
 };
 
 const getOrders = async (query: any = {}) => {
-  const { q, page = 1, limit = 10 } = query;
+  const { q, page = 1, limit = 10, ...filters } = query;
 
   // Build aggregation pipeline
   const pipeline: any = [
     {
-      $match: { isDeleted: false }
+      $match: { isDeleted: false, ...filters }
     },
     {
       $lookup: {
