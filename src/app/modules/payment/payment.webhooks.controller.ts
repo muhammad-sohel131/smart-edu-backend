@@ -25,15 +25,15 @@ const sslcommerzSuccess = catchAsync(async (req: Request, res: Response) => {
         });
     }
 
-    res.redirect(`${getFrontendUrl()}/payment/success`);
+    res.redirect(`${getFrontendUrl()}/payments/success?session_id=${orderId}`);
 });
 
 const sslcommerzFail = catchAsync(async (req: Request, res: Response) => {
-    res.redirect(`${getFrontendUrl()}/payment/fail`);
+    res.redirect(`${getFrontendUrl()}/payments/failed`);
 });
 
 const sslcommerzCancel = catchAsync(async (req: Request, res: Response) => {
-    res.redirect(`${getFrontendUrl()}/payment/cancel`);
+    res.redirect(`${getFrontendUrl()}/payments/failed`);
 });
 
 const sslcommerzIpn = catchAsync(async (req: Request, res: Response) => {

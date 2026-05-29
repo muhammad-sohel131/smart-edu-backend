@@ -8,12 +8,12 @@ import httpStatus from "http-status-codes";
 export class SSLCommerzProvider {
   private storeId: string;
   private storePass: string;
-  private isSandbox: boolean;
+  private isLive: boolean;
 
   constructor() {
     this.storeId = envVars.SSLCOMMERZ?.STORE_ID || process.env.STORE_ID || "testbox";
     this.storePass = envVars.SSLCOMMERZ?.STORE_PASS || process.env.STORE_PASS || "qwerty";
-    this.isSandbox = true; // Set to false in production
+    this.isLive = false; // Set to true in production
   }
 
   async createCheckoutSession(input: CreateSessionInput): Promise<CreateSessionResult> {
@@ -21,10 +21,10 @@ export class SSLCommerzProvider {
       total_amount: input.amount,
       currency: input.currency || "BDT",
       tran_id: input.orderId,
-      success_url: `${envVars.BASE_URL || 'http://localhost:5000'}/api/v1/payment/webhooks/sslcommerz/success?orderId=${input.orderId}`,
-      fail_url: `${envVars.BASE_URL || 'http://localhost:5000'}/api/v1/payment/webhooks/sslcommerz/fail?orderId=${input.orderId}`,
-      cancel_url: `${envVars.BASE_URL || 'http://localhost:5000'}/api/v1/payment/webhooks/sslcommerz/cancel?orderId=${input.orderId}`,
-      ipn_url: `${envVars.BASE_URL || 'http://localhost:5000'}/api/v1/payment/webhooks/sslcommerz/ipn`,
+      success_url: `${envVars.BASE_URL || 'http://localhost:5000'}/api/payment/webhooks/sslcommerz/success?orderId=${input.orderId}`,
+      fail_url: `${envVars.BASE_URL || 'http://localhost:5000'}/api/payment/webhooks/sslcommerz/fail?orderId=${input.orderId}`,
+      cancel_url: `${envVars.BASE_URL || 'http://localhost:5000'}/api/payment/webhooks/sslcommerz/cancel?orderId=${input.orderId}`,
+      ipn_url: `${envVars.BASE_URL || 'http://localhost:5000'}/api/payment/webhooks/sslcommerz/ipn`,
       shipping_method: 'NO',
       product_name: input.source,
       product_category: input.source,
@@ -48,10 +48,11 @@ export class SSLCommerzProvider {
       ship_country: input.shippingAddress?.country || 'Bangladesh',
     };
 
-    const sslcz = new SSLCommerzPayment(this.storeId, this.storePass, this.isSandbox);
+    const sslcz = new SSLCommerzPayment(this.storeId, this.storePass, this.isLive);
     
     try {
       const apiResponse = await sslcz.init(data);
+      console.log("SSLCommerz Init Response:", apiResponse);
       if (apiResponse?.GatewayPageURL) {
         return {
           sessionId: input.orderId, // We use orderId as tran_id/sessionId

@@ -274,7 +274,7 @@ const createDonationCheckout = async (
     user: userId,
     fund: fund,
     price: amount,
-    currency: "USD",
+    currency: "BDT",
     provider,
     itemType: "Donation",
     status: "pending",
@@ -284,9 +284,9 @@ const createDonationCheckout = async (
     provider,
     orderId: String(order._id),
     amount: amount,
-    currency: 'USD',
+    currency: 'BDT',
     userId: String(userId),
-    source: "event"
+    source: "Donation"
   });
 
   order.providerSessionId = session.sessionId;
@@ -416,7 +416,12 @@ const getOrderBySessionId = async (
   sessionId: string,
   actor: { userId: string; role: string }
 ) => {
-  const ord = await Order.findOne({ providerSessionId: sessionId });
+  let ord = await Order.findOne({ providerSessionId: sessionId });
+  
+  if (!ord && sessionId.match(/^[0-9a-fA-F]{24}$/)) {
+    ord = await Order.findById(sessionId);
+  }
+
   if (!ord) throw new AppError(httpStatus.NOT_FOUND, "Order Not Found");
 
   const isOwner = String(ord.user) === String(actor.userId);
