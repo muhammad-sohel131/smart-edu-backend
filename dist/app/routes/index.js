@@ -15,7 +15,6 @@ const quize_routes_1 = require("../modules/quiz/quize.routes");
 const enrollment_routes_1 = require("../modules/enrollment/enrollment.routes");
 const order_routes_1 = require("../modules/order/order.routes");
 const payment_routes_1 = require("../modules/payment/payment.routes");
-const package_routes_1 = require("../modules/Package/package.routes");
 const event_route_1 = require("../modules/event/event.route");
 const gamification_routes_1 = require("../modules/gamification/gamification.routes");
 const badge_routes_1 = require("../modules/badge/badge.routes");
@@ -94,10 +93,6 @@ const moduleRoutes = [
     {
         path: '/schools',
         route: school_routes_1.schoolRoutes,
-    },
-    {
-        path: '/packages',
-        route: package_routes_1.PackageRoutes
     },
     {
         path: '/events',

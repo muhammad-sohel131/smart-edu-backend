@@ -30,8 +30,7 @@ const orderEcommerceSchema = new mongoose_1.Schema({
 }, { _id: false, versionKey: false });
 const OrderSchema = new mongoose_1.Schema({
     user: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    itemType: { type: String, enum: ["course", "package", "event", "ecommerce", "Donation"], required: true },
-    package: { id: { type: String }, name: { type: mongoose_1.Schema.Types.Mixed } },
+    itemType: { type: String, enum: ["course", "event", "ecommerce", "Donation"], required: true },
     course: { type: String },
     fund: { type: String },
     courseIds: [{ type: String }],

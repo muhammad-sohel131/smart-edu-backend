@@ -19,12 +19,12 @@ interface EnvConfig {
     EXPRESS_SESSION_SECRET: string;
     FRONTEND_URL: string;
 
-    PAYMENT: {
-        STRIPE_SECRET_KEY: string;
-        STRIPE_SUCCESS_URL: string;
-        STRIPE_CANCEL_URL: string;
-        STRIPE_WEBHOOK_SECRET: string;
+    SSLCOMMERZ: {
+        STORE_ID: string;
+        STORE_PASS: string;
+        IS_LOCALHOST: string;
     }
+    BASE_URL: string;
     CLOUDINARY: {
         CLOUD_NAME: string;
         API_KEY: string;
@@ -62,10 +62,8 @@ const loadEnvVariables = (): EnvConfig => {
         "GOOGLE_CALLBACK_URL",
         "EXPRESS_SESSION_SECRET",
         "FRONTEND_URL",
-        "STRIPE_SECRET_KEY",
-        "STRIPE_WEBHOOK_SECRET",
-        "STRIPE_SUCCESS_URL",
-        "STRIPE_CANCEL_URL",
+        "STORE_ID",
+        "STORE_PASS",
         "CLOUDINARY_CLOUD_NAME",
         "CLOUDINARY_API_KEY",
         "CLOUDINARY_API_SECRET",
@@ -104,12 +102,12 @@ const loadEnvVariables = (): EnvConfig => {
         GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET as string,
 
         // SSL
-        PAYMENT: {
-            STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY as string,
-            STRIPE_SUCCESS_URL: process.env.STRIPE_SUCCESS_URL as string,
-            STRIPE_CANCEL_URL: process.env.STRIPE_CANCEL_URL as string,
-            STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET as string,
-        },  
+        SSLCOMMERZ: {
+            STORE_ID: process.env.STORE_ID as string,
+            STORE_PASS: process.env.STORE_PASS as string,
+            IS_LOCALHOST: process.env.IS_LOCALHOST as string,
+        },
+        BASE_URL: process.env.BASE_URL as string,
 
         // cloudinary
         CLOUDINARY: {

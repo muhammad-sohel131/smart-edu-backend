@@ -20,10 +20,12 @@ const user_model_1 = require("../modules/user/user.model");
 const AppError_1 = __importDefault(require("../errorHelpers/AppError"));
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
 const createUserTokens = (user) => {
+    var _a;
     const jwtPayload = {
         userId: user._id,
         email: user.email,
         role: user.role,
+        instructor_status: ((_a = user.instructorRequest) === null || _a === void 0 ? void 0 : _a.status) || "none"
     };
     const accessToken = (0, jwt_1.generateToken)(jwtPayload, env_1.envVars.JWT_ACCESS_SECRET, env_1.envVars.JWT_ACCESS_EXPIRES);
     const refreshToken = (0, jwt_1.generateToken)(jwtPayload, env_1.envVars.JWT_REFRESH_SECRET, env_1.envVars.JWT_REFRESH_EXPIRES);

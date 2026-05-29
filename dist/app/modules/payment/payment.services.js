@@ -13,9 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentService = void 0;
-const stripe_1 = require("./providers/stripe");
-const paypal_1 = require("./providers/paypal");
-const toyyibpay_1 = require("./providers/toyyibpay");
+const sslcommerz_1 = require("./providers/sslcommerz");
 const order_model_1 = require("../order/order.model");
 const enrollment_services_1 = require("../enrollment/enrollment.services");
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
@@ -25,9 +23,7 @@ const product_model_1 = require("../ecom/product/product.model");
 const course_model_1 = require("../course/course.model");
 const event_model_1 = require("../event/event.model");
 const providers = {
-    stripe: new stripe_1.StripeProvider(),
-    paypal: new paypal_1.PaypalProvider(),
-    toyyibpay: new toyyibpay_1.ToyyibPayProvider()
+    sslcommerz: new sslcommerz_1.SSLCommerzProvider()
 };
 const createCheckoutSession = (input) => __awaiter(void 0, void 0, void 0, function* () {
     console.log("Creating checkout session with input:", input);
@@ -62,7 +58,7 @@ const markPaidFromWebhook = (provider, normalized) => __awaiter(void 0, void 0, 
         return order;
     }
     // Validate payment amount (for Stripe, amount is in cents)
-    const expectedAmount = provider === "stripe" ? order.price * 100 : order.price;
+    const expectedAmount = order.price;
     if (Math.abs(normalized.amount - expectedAmount) > 1) { // Allow 1 cent/unit difference for rounding
         console.error(`❌ Amount mismatch - Expected: ${expectedAmount}, Received: ${normalized.amount}`);
         throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Payment amount does not match order amount");

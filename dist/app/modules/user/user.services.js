@@ -41,10 +41,11 @@ const createUser = (payload) => __awaiter(void 0, void 0, void 0, function* () {
         provider: "credentials",
         providerId: email,
     };
-    const user = yield user_model_1.User.create(Object.assign({ email, password: hashPassword, auths: [authProvider] }, rest));
+    const instructorRequest = payload.role === user_interface_1.Role.INSTRUCTOR ? "pending" : "none";
+    const user = yield user_model_1.User.create(Object.assign({ email, password: hashPassword, auths: [authProvider], instructorRequest: { status: instructorRequest } }, rest));
     if (user.role === user_interface_1.Role.INSTRUCTOR) {
         const inst = yield user_model_1.Instructor.create({
-            userId: user._id
+            userId: user._id,
         });
     }
     const userObj = user.toObject();

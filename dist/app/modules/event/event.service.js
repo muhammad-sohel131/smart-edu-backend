@@ -43,6 +43,31 @@ const remove = (eventId) => __awaiter(void 0, void 0, void 0, function* () {
 const listPublic = () => __awaiter(void 0, void 0, void 0, function* () {
     return event_model_1.Event.find({ isDeleted: false }).sort({ startDate: 1 });
 });
+const getMyRegisteredEvents = (userId) => __awaiter(void 0, void 0, void 0, function* () {
+    return event_model_1.Event.find({ isDeleted: false, attendees: userId }).sort({ startDate: 1 });
+});
+const getAllRegistrations = () => __awaiter(void 0, void 0, void 0, function* () {
+    // fetch events with attendees populated
+    const events = yield event_model_1.Event.find({
+        isDeleted: false,
+        attendees: { $exists: true, $ne: [] }
+    })
+        .sort({ startDate: 1 })
+        .populate("attendees", "name email picture phone");
+    // flatten: each attendee gets its own "event" object
+    const result = [];
+    events.forEach(event => {
+        event.attendees.forEach((user) => {
+            result.push({
+                eventId: event._id,
+                eventTitle: event.title,
+                startDate: event.startDate,
+                user: user,
+            });
+        });
+    });
+    return result;
+});
 const get = (eventId) => __awaiter(void 0, void 0, void 0, function* () {
     const event = yield event_model_1.Event.findOne({ _id: eventId, isDeleted: false });
     if (!event)
@@ -112,5 +137,7 @@ exports.EventServices = {
     get,
     register,
     markAttendance,
-    createCheckout
+    getMyRegisteredEvents,
+    createCheckout,
+    getAllRegistrations
 };

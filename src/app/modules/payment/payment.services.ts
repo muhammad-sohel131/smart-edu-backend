@@ -62,7 +62,7 @@ const markPaidFromWebhook = async (
     return order;
   }
 
-  // Validate payment amount (for Stripe, amount is in cents)
+  // Validate payment amount
   const expectedAmount = order.price;
   if (Math.abs(normalized.amount - expectedAmount) > 1) { // Allow 1 cent/unit difference for rounding
     console.error(`❌ Amount mismatch - Expected: ${expectedAmount}, Received: ${normalized.amount}`);

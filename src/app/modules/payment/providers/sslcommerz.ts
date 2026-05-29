@@ -1,6 +1,7 @@
+// @ts-ignore
 import SSLCommerzPayment from "sslcommerz-lts";
 import { CreateSessionInput, CreateSessionResult } from "../payment.types";
-import envVars from "../../../../config";
+import { envVars } from "../../../config/env";
 import AppError from "../../../errorHelpers/AppError";
 import httpStatus from "http-status-codes";
 

@@ -105,7 +105,7 @@ const getOrderById = catchAsync(async (req: Request, res: Response) => {
 });
 
 /**
- * 🔍 Get order details by Stripe/Toyyib sessionId
+ * 🔍 Get order details by sessionId (SSLCommerz)/Toyyib sessionId
  */
 const getOrderBySession = catchAsync(async (req: Request, res: Response) => {
   const token = req.user as JwtPayload;

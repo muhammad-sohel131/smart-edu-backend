@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 
 export type OrderStatus = "pending" | "paid" | "failed" | "refunded" | "canceled";
-export type PaymentProvider = "stripe" | "paypal" | "toyyibpay";
+export type PaymentProvider = "sslcommerz";
 
 export type OrderSource = "course" | "event" | "ecommerce" | "Donation";
 

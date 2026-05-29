@@ -235,7 +235,7 @@ const createCheckout = (courseId, userId, provider, itemType, couponCode, billin
     const session = yield payment_services_1.PaymentService.createCheckoutSession({
         provider,
         orderId: String(order._id),
-        amount: price * 100,
+        amount: price,
         currency,
         courseId: String(course._id),
         userId: String(userId),
@@ -263,31 +263,6 @@ const createDonationCheckout = (fund, userId, provider, amount) => __awaiter(voi
         currency: 'USD',
         userId: String(userId),
         source: "event"
-    });
-    order.providerSessionId = session.sessionId;
-    yield order.save();
-    return { orderId: String(order._id), checkoutUrl: session.checkoutUrl };
-});
-/* ----------------------- PACKAGE CHECKOUT ----------------------- */
-const createCheckoutForPackage = (input) => __awaiter(void 0, void 0, void 0, function* () {
-    const order = yield order_model_1.Order.create({
-        user: input.userId,
-        package: { id: input.packageId, name: input.name },
-        courseIds: input.courseIds,
-        price: input.amount,
-        currency: input.currency,
-        provider: "stripe",
-        status: "pending",
-        itemType: "package",
-    });
-    const session = yield payment_services_1.PaymentService.createCheckoutSession({
-        provider: "stripe",
-        orderId: String(order._id),
-        amount: input.amount * 100,
-        currency: input.currency,
-        packageId: input.packageId,
-        userId: input.userId,
-        source: "package",
     });
     order.providerSessionId = session.sessionId;
     yield order.save();
@@ -348,7 +323,7 @@ const startEcommerceCheckoutFromClient = (input) => __awaiter(void 0, void 0, vo
         provider: (_f = input === null || input === void 0 ? void 0 : input.payload) === null || _f === void 0 ? void 0 : _f.provider,
         source: "ecommerce",
         orderId: String(order._id),
-        amount: total * 100,
+        amount: total,
         currency: input.currency || "USD",
         userId: input.userId,
     });
@@ -489,14 +464,14 @@ const createCheckoutForEvent = (input) => __awaiter(void 0, void 0, void 0, func
         event: input.eventId,
         price: input.amount,
         currency: input.currency,
-        provider: "stripe",
+        provider: "sslcommerz",
         status: "pending",
         itemType: "event",
     });
     const session = yield payment_services_1.PaymentService.createCheckoutSession({
-        provider: "stripe",
+        provider: "sslcommerz",
         orderId: String(order._id),
-        amount: input.amount * 100,
+        amount: input.amount,
         currency: input.currency,
         eventId: input.eventId,
         userId: input.userId,
@@ -509,7 +484,6 @@ const createCheckoutForEvent = (input) => __awaiter(void 0, void 0, void 0, func
 /* ----------------------- EXPORT ----------------------- */
 exports.OrderServices = {
     createCheckout,
-    createCheckoutForPackage,
     startEcommerceCheckoutFromClient,
     getMyOrders,
     getOrderById,

@@ -139,7 +139,7 @@ const cancelOrder = async (
 
   if (ord.status === "paid") {
     // Decide your policy. Typically:
-    // 1) Initiate provider refund (Stripe/PayPal) — not implemented here
+    // 1) Initiate provider refund (SSLCommerz) — not implemented here
     // 2) If restock true and ecommerce, add stock back
     if (payload.restock && ord.source === "ecommerce" && ord.ecommerce?.items?.length) {
       for (const it of ord.ecommerce.items) {
