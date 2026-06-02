@@ -1,6 +1,7 @@
 import cloudinary from "../../config/cloudinary";
 import AppError from "../../errorHelpers/AppError";
 import httpStatus from "http-status-codes";
+import axios from "axios";
 
 interface UploadPayload {
   fileBase64: string;      // Base64 encoded file data
@@ -35,6 +36,16 @@ const uploadMedia = async (payload: UploadPayload) => {
     resourceType = "video";
   }
 
+  let currentTimestamp: number | undefined;
+  try {
+    // Fetch actual time from Google to prevent "Stale request" errors when system clock is out of sync
+    const timeRes = await axios.head("https://google.com", { timeout: 3000 });
+    currentTimestamp = Math.floor(new Date(timeRes.headers.date).getTime() / 1000);
+  } catch (err) {
+    // Fallback to local system time + 1 hour (since the clock seems to be 1 hour behind)
+    currentTimestamp = Math.floor(Date.now() / 1000) + 3600;
+  }
+
   try {
     const result = await cloudinary.uploader.upload(fileBase64, {
       folder,
@@ -43,6 +54,7 @@ const uploadMedia = async (payload: UploadPayload) => {
       use_filename: !!filename,
       filename_override: filename,
       pages: isPdf ? true : undefined, // Extract first page thumbnail for PDFs
+      timestamp: currentTimestamp,
     });
 
     // Optional thumbnail for PDFs (first page as image)

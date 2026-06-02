@@ -167,7 +167,7 @@ const cancelOrder = async (
 
 const resolvePrice = async (course: any, couponCode?: string) => {
   // TODO: add coupon/discount logic here
-  return { price: course.price ?? 0, currency: course.currency ?? "USD" };
+  return { price: course.price ?? 0, currency: course.currency ?? "BDT" };
 };
 
 /* ----------------------- NORMAL COURSE CHECKOUT ----------------------- */
@@ -362,7 +362,7 @@ const startEcommerceCheckoutFromClient = async (input: any) => {
     price: total,
     itemType: "ecommerce",
 
-    currency: input.currency || "USD",
+    currency: input.currency || "BDT",
     ecommerce: {
       items: verifiedLines,
       subtotal,
@@ -381,7 +381,7 @@ const startEcommerceCheckoutFromClient = async (input: any) => {
       source: "ecommerce",
       orderId: String(order._id),
       amount: total,
-      currency: input.currency || "USD",
+      currency: input.currency || "BDT",
       userId: input.userId,
     });
 

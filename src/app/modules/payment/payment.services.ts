@@ -62,10 +62,10 @@ const markPaidFromWebhook = async (
     return order;
   }
 
-  // Validate payment amount
+  // Validate payment amount (allow higher amount to account for gateway convenience fees)
   const expectedAmount = order.price;
-  if (Math.abs(normalized.amount - expectedAmount) > 1) { // Allow 1 cent/unit difference for rounding
-    console.error(`❌ Amount mismatch - Expected: ${expectedAmount}, Received: ${normalized.amount}`);
+  if (normalized.amount < expectedAmount - 1) { 
+    console.error(`❌ Amount mismatch - Expected at least: ${expectedAmount - 1}, Received: ${normalized.amount}`);
     throw new AppError(httpStatus.BAD_REQUEST, "Payment amount does not match order amount");
   }
 
@@ -108,7 +108,7 @@ const markPaidFromWebhook = async (
    * ------------------------------------------------------------------ */
   if (order.itemType === "course" && order.course) {
   
-    await EnrollmentServices.enrollSelf(String(order.course), normalized.userId, course.instructor);
+    await EnrollmentServices.enrollSelf(String(order.course), normalized.userId, course?.instructor);
 
     // Optional: auto-award enrollment points
     await GamificationServices.addPoints({
