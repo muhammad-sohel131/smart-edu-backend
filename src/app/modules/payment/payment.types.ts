@@ -1,5 +1,5 @@
 export type Provider = "sslcommerz";
-export type PaymentSource = "course" | "event" | "ecommerce" | "Donation";
+export type PaymentSource = "course" | "event" | "Donation";
 
 export type CreateSessionInput = {
   provider: Provider;
@@ -11,19 +11,6 @@ export type CreateSessionInput = {
   currency: string;
   courseId?: string;
   eventId?: string;
-
-
-  cart?: boolean;
-  shippingAddress?: {
-    name: string;
-    phone?: string;
-    line1: string;
-    line2?: string;
-    city: string;
-    state?: string;
-    postcode?: string;
-    country: string;
-  };
 };
 
 export type CreateSessionResult = {

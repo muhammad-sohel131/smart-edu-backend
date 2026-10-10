@@ -13,19 +13,19 @@ const startServer = async () => {
     await mongoose.connect(envVars.DB_URL);
     console.log("Connected to DB");
 
+    await seedSuperAdmin();
+    await connectRedis();
+
     server = app.listen(envVars.PORT, () => {
       console.log(`Server is listening to port ${envVars.PORT}`);
     });
   } catch (error) {
-    console.log(error);
+    console.error("Database connection failed:", error);
+    process.exit(1);
   }
 };
 
-(async () => {
-  await startServer();
-  await seedSuperAdmin()
-  await connectRedis()
-})();
+startServer();
 
 export default app
 

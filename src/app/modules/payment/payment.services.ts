@@ -6,7 +6,6 @@ import { EnrollmentServices } from "../enrollment/enrollment.services";
 import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/AppError";
 import { GamificationServices } from "../gamification/gamification.service";
-import { Product } from "../ecom/product/product.model";
 import { Course } from "../course/course.model";
 import { Event } from "../event/event.model";
 
@@ -75,33 +74,6 @@ const markPaidFromWebhook = async (
   order.providerSessionId = normalized.providerSessionId ?? order.providerSessionId;
   order.status = "paid";
   await order.save();
-
-  /* --------------------------------------------------------------------
-   * 🛍️ HANDLE ECOMMERCE ORDER
-   * ------------------------------------------------------------------ */
-  if (order.itemType === "ecommerce" && order.ecommerce?.items?.length) {
-    for (const item of order.ecommerce.items) {
-      const prod: any = await Product.findById(item.product);
-      if (!prod) continue;
-
-      prod.stock = Math.max(0, (prod.stock || 0) - item.qty);
-      await prod.save();
-    }
-
-    const points = Math.floor((order.amount || 0) / 10); // $10 => 1 point
-    if (points > 0) {
-      await GamificationServices.addPoints({
-        userId: String(order.user),
-        points,
-        sourceType: order.itemType,
-        reason: "Store purchase",
-      });
-    }
-
-    // 3d. Mark fulfillment pending
-    order.ecommerce.fulfillment.status = "pending";
-    await order.save();
-  }
 
   /* --------------------------------------------------------------------
    * 🎓 HANDLE COURSE / PACKAGE ENROLLMENT

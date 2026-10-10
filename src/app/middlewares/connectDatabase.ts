@@ -6,7 +6,9 @@ import { envVars } from "../config/env";
 export const connectDatabase = () => async (req: Request, res: Response, next: NextFunction) => {
 
     try {
-        // Connect to database logic would go here
+        if (mongoose.connection.readyState === 1) {
+            return next();
+        }
         await mongoose.connect(envVars.DB_URL);
         console.log("Connected to DB");
         next();

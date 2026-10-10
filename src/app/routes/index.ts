@@ -18,8 +18,6 @@ import { EventRoutes } from "../modules/event/event.route";
 import { GamificationRoutes } from "../modules/gamification/gamification.routes";
 import { BadgeRoutes } from "../modules/badge/badge.routes";
 import { UploadRoutes } from "../modules/upload/upload.route";
-import { CategoryRoutes } from "../modules/ecom/category/category.routes";
-import { ProductRoutes } from "../modules/ecom/product/product.routes";
 import { DashboardRoutes } from "../modules/dashboard/dashboard.routes";
 import { categoriesRoutes } from "../modules/category/category.routes";
 import { cityRoutes } from "../modules/city/city.routes";
@@ -114,14 +112,6 @@ const moduleRoutes = [
         path: "/upload",
         route: UploadRoutes
     },
-    // {
-    //     path: "/ecom/categories",
-    //     route: CategoryRoutes
-    // },
-    {
-        path: "/ecom/products",
-        route: ProductRoutes
-    }
 ]
 
 moduleRoutes.forEach(route => {

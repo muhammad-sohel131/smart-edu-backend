@@ -3,7 +3,6 @@ import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/AppError";
 import { Order } from "./order.model";
 import { Course } from "../course/course.model";
-import { Product } from "../ecom/product/product.model";
 import { PaymentService } from "../payment/payment.services";
 import { OrderSource } from "./order.interface";
 
@@ -27,137 +26,15 @@ const ensureOrder = async (orderId: string) => {
   return ord;
 };
 
-/** Admin: mark e-commerce order as shipped/processing (sets tracking optionally) */
-const fulfillEcommerceOrder = async (
-  orderId: string,
-  payload: { status?: "processing" | "shipped"; trackingNumber?: string; carrier?: string },
-  actor: { userId: string; role: string }
-) => {
-  assertAdmin(actor);
-  const ord = await ensureOrder(orderId);
-
-  if (ord.itemType !== "ecommerce")
-    throw new AppError(httpStatus.BAD_REQUEST, "Only e-commerce orders can be fulfilled");
-
-  if (ord.status !== "paid")
-    throw new AppError(httpStatus.BAD_REQUEST, "Only paid orders can be fulfilled");
-
-  // Initialize subdoc if missing
-  ord.ecommerce = ord.ecommerce || ({} as any);
-  ord.ecommerce.fulfillment = ord.ecommerce.fulfillment || ({} as any);
-
-  // Update fields
-  ord.ecommerce.fulfillment.status = payload?.status || "shipped";
-  if (payload?.trackingNumber) ord.ecommerce.fulfillment.trackingNumber = payload?.trackingNumber;
-  if (payload?.carrier) ord.ecommerce.fulfillment.carrier = payload?.carrier;
-  if (payload?.status === "shipped") ord.ecommerce.fulfillment.shippedAt = new Date();
-
-  await ord.save();
-  return ord;
-};
-
-/** Admin: update tracking (optionally bump status to shipped/processing) */
-const updateEcommerceTracking = async (
-  orderId: string,
-  payload: { trackingNumber: string; carrier?: string; status?: "processing" | "shipped" },
-  actor: { userId: string; role: string }
-) => {
-  assertAdmin(actor);
-  const ord = await ensureOrder(orderId);
-
-  if (ord.itemType !== "ecommerce")
-    throw new AppError(httpStatus.BAD_REQUEST, "Only e-commerce orders can be tracked");
-
-  if (ord.status !== "paid")
-    throw new AppError(httpStatus.BAD_REQUEST, "Only paid orders can be tracked");
-
-  ord.ecommerce = ord.ecommerce || ({} as any);
-  ord.ecommerce.fulfillment = ord.ecommerce.fulfillment || ({} as any);
-
-  ord.ecommerce.fulfillment.trackingNumber = payload.trackingNumber;
-  if (payload.carrier) ord.ecommerce.fulfillment.carrier = payload.carrier;
-
-  if (payload.status) {
-    ord.ecommerce.fulfillment.status = payload.status;
-    if (payload.status === "shipped") ord.ecommerce.fulfillment.shippedAt = new Date();
-  }
-
-  await ord.save();
-  return ord;
-};
-
-/** Admin: mark delivered (idempotent) */
-const markEcommerceDelivered = async (
-  orderId: string,
-  payload: { deliveredAt?: string },
-  actor: { userId: string; role: string }
-) => {
-  assertAdmin(actor);
-  const ord = await ensureOrder(orderId);
-
-  if (ord.itemType !== "ecommerce")
-    throw new AppError(httpStatus.BAD_REQUEST, "Only e-commerce orders can be delivered");
-
-  if (ord.status !== "paid")
-    throw new AppError(httpStatus.BAD_REQUEST, "Only paid orders can be delivered");
-
-  ord.ecommerce = ord.ecommerce || ({} as any);
-  ord.ecommerce.fulfillment = ord.ecommerce.fulfillment || ({} as any);
-
-  // If already delivered, return as-is (idempotent)
-  if (ord.ecommerce.fulfillment.status === "delivered") return ord;
-
-  ord.ecommerce.fulfillment.status = "delivered";
-  ord.ecommerce.fulfillment.deliveredAt = payload?.deliveredAt
-    ? new Date(payload?.deliveredAt)
-    : new Date();
-
-  await ord.save();
-
-  // Optional: tiny bonus points for delivered orders
-  const bonus = Math.max(1, Math.floor((ord.amount || 0) / 100)); // e.g., 1pt per $100
-  if (bonus > 0) {
-    await GamificationServices.addPoints({
-      userId: String(ord.user),
-      points: bonus,
-      sourceType: "purchase",
-      reason: "Order delivered bonus",
-    });
-  }
-
-  return ord;
-};
-
-/** Admin: cancel order (stub). If you want refunds, integrate provider’s refund API */
+/** Admin: cancel order */
 const cancelOrder = async (
   orderId: string,
-  payload: { reason?: string; restock?: boolean },
+  payload: { reason?: string },
   actor: { userId: string; role: string }
 ) => {
   assertAdmin(actor);
   const ord = await ensureOrder(orderId);
-
-  if (ord.status === "paid") {
-    // Decide your policy. Typically:
-    // 1) Initiate provider refund (SSLCommerz) — not implemented here
-    // 2) If restock true and ecommerce, add stock back
-    if (payload.restock && ord.source === "ecommerce" && ord.ecommerce?.items?.length) {
-      for (const it of ord.ecommerce.items) {
-        const prod: any = await Product.findById(it.product);
-        if (!prod) continue;
-        if (it.variantId && Array.isArray(prod.variants)) {
-          const idx = prod.variants.findIndex((v: any) => String(v._id) === String(it.variantId));
-          if (idx >= 0) prod.variants[idx].stock = (prod.variants[idx].stock || 0) + it.qty;
-        } else {
-          prod.stock = (prod.stock || 0) + it.qty;
-        }
-        await prod.save();
-      }
-    }
-  }
-
-  ord.status = "cancelled";
-  // Optionally record reason somewhere (add a cancellations array if you want audits)
+  ord.status = "canceled";
   await ord.save();
   return ord;
 };
@@ -296,101 +173,6 @@ const createDonationCheckout = async (
 };
 
 
-/* ----------------------- ECOMMERCE CHECKOUT (CLIENT CART) ----------------------- */
-
-type ClientEcomInput = {
-  userId: string;
-  shippingAddress: any;
-  items: Array<{
-    product: string;
-    variantId?: string;
-    qty: number;
-    unitPrice: number;
-    title: Record<string, string>;
-    image?: string;
-  }>;
-  currency?: string;
-};
-
-const startEcommerceCheckoutFromClient = async (input: any) => {
-  const items = input?.payload?.items ?? [];
-
-  if (!items.length)
-    throw new AppError(httpStatus.BAD_REQUEST, "No items found to checkout");
-
-  const verifiedLines = [];
-
-  for (const line of items) {
-    const prod = await Product.findById(line.product);
-    if (!prod || !prod.isActive)
-      throw new AppError(httpStatus.BAD_REQUEST, "Product not available");
-
-    let effectivePrice = prod.price;
-    let effectiveStock = prod.stock;
-
-
-    if (effectiveStock < line.qty) {
-      throw new AppError(httpStatus.BAD_REQUEST, "Insufficient stock");
-    }
-
-    if (line.price !== effectivePrice) {
-      // Protect from tampered FE prices
-      throw new AppError(httpStatus.BAD_REQUEST, "Price mismatch. Refresh page.");
-    }
-
-    verifiedLines.push({
-      product: prod._id,
-      qty: line.quantity,
-      unitPrice: effectivePrice,
-      title: line.title || prod.title,
-      image: line.image || prod.images?.[0],
-    });
-  }
-
-
-  const subtotal = verifiedLines.reduce((s, it) => s + it.unitPrice * it.qty, 0);
-  const discount = 0;
-  const shippingFee = 0;
-  const tax = .1;
-  const total = subtotal - discount + shippingFee + (subtotal - discount + shippingFee) * tax;
-
-  const order = await Order.create({
-    user: input.userId,
-    provider: input?.payload?.provider,
-    status: "pending",
-    source: "ecommerce",
-    price: total,
-    itemType: "ecommerce",
-
-    currency: input.currency || "BDT",
-    ecommerce: {
-      items: verifiedLines,
-      subtotal,
-      discount,
-      shippingFee,
-      tax,
-      total,
-      shippingAddress: input?.payload?.shippingAddress,
-      fulfillment: { status: "unfulfilled" },
-    },
-  });
-
-  const { sessionId, checkoutUrl } =
-    await PaymentService.createCheckoutSession({
-      provider: input?.payload?.provider,
-      source: "ecommerce",
-      orderId: String(order._id),
-      amount: total,
-      currency: input.currency || "BDT",
-      userId: input.userId,
-    });
-
-  order.providerSessionId = sessionId;
-  await order.save();
-
-  return { sessionId, checkoutUrl };
-};
-
 /* ----------------------- ORDERS FETCHING ----------------------- */
 const getMyOrders = async (userId: string) =>{
   const orders = await Order.find({ user: userId, isDeleted: false }).sort({ createdAt: -1 });
@@ -503,7 +285,6 @@ const getOrders = async (query: any = {}) => {
         itemType: "$itemType",
         provider: "$provider",
         course: 1,
-        ecommerce: 1,
         createdAt: 1,
         fund: 1,
         event: "$eventData.title"
@@ -585,15 +366,10 @@ const createCheckoutForEvent = async (input: {
 /* ----------------------- EXPORT ----------------------- */
 export const OrderServices = {
   createCheckout,
-  startEcommerceCheckoutFromClient,
   getMyOrders,
   getOrderById,
   getOrderBySessionId,
   getOrders,
-
-  fulfillEcommerceOrder,
-  updateEcommerceTracking,
-  markEcommerceDelivered,
   cancelOrder,
   createDonationCheckout,
   createCheckoutForEvent

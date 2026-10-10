@@ -49,25 +49,6 @@ const createDonationCheckout = catchAsync(async (req: Request, res: Response) =>
   });
 });
 
-/**
- * 🛒 Checkout for eCommerce (client-provided cart)
- * - Body: { items: [...], shippingAddress: {...}, currency?: "USD" }
- */
-const checkoutEcommerce = catchAsync(async (req: Request, res: Response) => {
-  const token = req.user as JwtPayload;
-
-  const session = await OrderServices.startEcommerceCheckoutFromClient({
-    userId: token.userId,
-    payload: req.body
-  });
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "E-commerce checkout session created successfully",
-    data: session, // { orderId, sessionId, checkoutUrl }
-  });
-});
 
 /**
  * 📦 Get my orders (student/instructor)
@@ -138,61 +119,12 @@ const getOrders = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const fulfillEcommerce = catchAsync(async (req: Request, res: Response) => {
-  const token = req.user as JwtPayload;
-  const { id } = req.params;
-  const result = await OrderServices.fulfillEcommerceOrder(
-    id,
-    req.body, // { status, trackingNumber?, carrier? }
-    { userId: token.userId, role: token.role }
-  );
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Order fulfillment updated",
-    data: result,
-  });
-});
-
-const updateTracking = catchAsync(async (req: Request, res: Response) => {
-  const token = req.user as JwtPayload;
-  const { id } = req.params;
-  const result = await OrderServices.updateEcommerceTracking(
-    id,
-    req.body, // { trackingNumber, carrier?, status? }
-    { userId: token.userId, role: token.role }
-  );
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Tracking updated",
-    data: result,
-  });
-});
-
-const markDelivered = catchAsync(async (req: Request, res: Response) => {
-  const token = req.user as JwtPayload;
-  const { id } = req.params;
-  const result = await OrderServices.markEcommerceDelivered(
-    id,
-    req.body, // { deliveredAt? }
-    { userId: token.userId, role: token.role }
-  );
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Order marked delivered",
-    data: result,
-  });
-});
-
 const cancelOrder = catchAsync(async (req: Request, res: Response) => {
   const token = req.user as JwtPayload;
   const { id } = req.params;
   const result = await OrderServices.cancelOrder(
     id,
-    req.body, // { reason?, restock? }
+    req.body,
     { userId: token.userId, role: token.role }
   );
   sendResponse(res, {
@@ -206,14 +138,10 @@ const cancelOrder = catchAsync(async (req: Request, res: Response) => {
 
 export const orderController = {
   createCheckout,
-  checkoutEcommerce,
   getMyOrders,
   getOrderById,
   getOrderBySession,
   getOrders,
-  fulfillEcommerce,
-  updateTracking,
-  markDelivered,
   cancelOrder,
   createDonationCheckout
 };
