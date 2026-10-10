@@ -14,7 +14,7 @@ export const checkAuth =
       const accessToken = req.headers.authorization || req.cookies.accessToken;
 
       if (!accessToken) {
-        throw new AppError(403, "Missing Access Token");
+        throw new AppError(401, "Missing Access Token");
       }
 
       const verifiedToken = verifyToken(
@@ -23,7 +23,7 @@ export const checkAuth =
       ) as JwtPayload;
 
       if (!verifiedToken) {
-        throw new AppError(403, "You are not authorized");
+        throw new AppError(401, "You are not authorized");
       }
 
       const isUserExist = await User.findOne({ email: verifiedToken.email });
