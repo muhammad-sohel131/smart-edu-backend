@@ -6,6 +6,7 @@ import { Course } from "./course.model";
 import { ICourse, ICourseListQuery } from "./course.interface";
 import { Lesson } from "../lesson/lesson.model";
 import { Unit } from "../unit/unit.model";
+import { Instructor } from "../user/user.model";
 
 const createCourse = async (payload: Omit<ICourse, "slug" | "isDeleted">) => {
   console.log("Creating course with payload:", payload);
@@ -45,7 +46,14 @@ if(query.q){
   if (query.status) filter.status = query.status;
 
   // 👨‍🏫 Instructor
-  if (query.instructor) filter.instructor = query.instructor as any;
+  if (query.instructor) {
+    const instructorDoc = await Instructor.findById(query.instructor);
+    if (instructorDoc && instructorDoc.userId) {
+      filter.instructor = instructorDoc.userId;
+    } else {
+      filter.instructor = query.instructor as any;
+    }
+  }
 
   // 💰 Free vs Paid filter
   if (query.price === "free") {
