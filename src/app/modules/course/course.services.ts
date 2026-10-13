@@ -33,10 +33,20 @@ if(query.q){
 }
 
   // 🎯 Category (support single or multiple)
-  
   if (query.categories) {
-    const categories = query.categories.split(",")
-    filter.category = { $in: categories };
+    const rawCategories = String(query.categories)
+      .split(",")
+      .map((c: string) => c.trim())
+      .filter(Boolean);
+
+    if (rawCategories.length > 0) {
+      const escapeRegex = (s: string) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+      const regexPatterns = rawCategories.map((c: string) => {
+        const withSpaces = c.replace(/[_-]/g, " ");
+        return new RegExp(`^(${escapeRegex(c)}|${escapeRegex(withSpaces)})$`, "i");
+      });
+      filter.category = { $in: regexPatterns };
+    }
   }
 
   // 📚 Level
