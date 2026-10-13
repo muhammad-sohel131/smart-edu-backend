@@ -4,6 +4,7 @@ import AppError from "../../errorHelpers/AppError";
 import { Order } from "./order.model";
 import { User } from "../user/user.model";
 import { Course } from "../course/course.model";
+import { Event } from "../event/event.model";
 import { PaymentService } from "../payment/payment.services";
 import { OrderSource } from "./order.interface";
 
@@ -226,9 +227,11 @@ const getDonationsByPhone = async (phone: string) => {
 
 /* ----------------------- ORDERS FETCHING ----------------------- */
 const getMyOrders = async (userId: string) =>{
-  const orders = await Order.find({ user: userId, isDeleted: false }).sort({ createdAt: -1 });
-  return orders
-}
+  const orders = await Order.find({ user: userId, isDeleted: false })
+    .populate("event", "title eventDate thumbnail location price")
+    .sort({ createdAt: -1 });
+  return orders;
+};
 
 const getOrderById = async (
   orderId: string,

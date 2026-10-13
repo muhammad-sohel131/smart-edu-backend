@@ -6,6 +6,7 @@ import { IEvent } from "./event.interface";
 import { GamificationServices } from "../gamification/gamification.service"; // optional if already exists
 import { BadgeServices } from "../badge/badge.service";
 import { OrderServices } from "../order/order.services";
+import { Order } from "../order/order.model";
 
 const create = async (payload: Partial<IEvent>, userId: string) => {
   const now = new Date(payload.eventDate ?? Date.now());
@@ -35,7 +36,44 @@ const listPublic = async () => {
 };
 
 const getMyRegisteredEvents = async (userId: string) => {
-  return Event.find({ isDeleted: false, attendees: userId }).sort({ startDate: 1 });
+  const orders = await Order.find({
+    user: userId,
+    itemType: "event",
+    status: "paid",
+    isDeleted: false,
+  }).select("event price currency status provider createdAt").lean();
+
+  const eventIdsFromOrders = orders
+    .map((o: any) => o.event)
+    .filter(Boolean);
+
+  const events = await Event.find({
+    isDeleted: false,
+    $or: [
+      { attendees: userId },
+      ...(eventIdsFromOrders.length > 0 ? [{ _id: { $in: eventIdsFromOrders } }] : []),
+    ],
+  })
+    .populate("organizer", "name email picture")
+    .sort({ eventDate: 1, createdAt: -1 })
+    .lean();
+
+  const orderMap = new Map();
+  orders.forEach((o: any) => {
+    if (o.event) {
+      orderMap.set(String(o.event), o);
+    }
+  });
+
+  return events.map((ev: any) => {
+    const order = orderMap.get(String(ev._id)) || null;
+    return {
+      ...ev,
+      order,
+      isPaid: Boolean(order) || ev.price === 0,
+      registrationDate: order?.createdAt || ev.createdAt,
+    };
+  });
 };
 const getAllRegistrations = async () => {
   // fetch events with attendees populated
