@@ -1,7 +1,10 @@
 import { Schema, model, models } from "mongoose";
 import { IOrder } from "./order.interface";
 const OrderSchema = new Schema<IOrder>({
-    user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    user: { type: Schema.Types.ObjectId, ref: "User", index: true },
+    donorName: { type: String },
+    donorEmail: { type: String },
+    donorPhone: { type: String, index: true },
     itemType: { type: String, enum: ["course", "event", "Donation"], required: true },
     course: { type: String },
     fund: {type: String},

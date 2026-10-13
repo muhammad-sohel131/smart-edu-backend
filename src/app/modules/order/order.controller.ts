@@ -32,19 +32,32 @@ const createCheckout = catchAsync(async (req: Request, res: Response) => {
 
 const createDonationCheckout = catchAsync(async (req: Request, res: Response) => {
   const token = req.user as JwtPayload;
-  const { provider, fund, amount,  } = req.body;
+  const { provider, fund, amount, donorInfo, billingInfo } = req.body;
+  const info = donorInfo || billingInfo || {};
 
   const data = await OrderServices.createDonationCheckout(
     fund,
     token?.userId,
     provider,
-    amount
+    amount,
+    info
   );
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
     message: "Checkout created successfully",
+    data,
+  });
+});
+
+const trackDonationsByPhone = catchAsync(async (req: Request, res: Response) => {
+  const phone = (req.query.phone as string) || (req.params.phone as string);
+  const data = await OrderServices.getDonationsByPhone(phone);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Donations fetched successfully",
     data,
   });
 });
@@ -143,5 +156,6 @@ export const orderController = {
   getOrderBySession,
   getOrders,
   cancelOrder,
-  createDonationCheckout
+  createDonationCheckout,
+  trackDonationsByPhone
 };

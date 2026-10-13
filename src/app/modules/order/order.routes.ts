@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { checkAuth } from "../../middlewares/checkAuth";
+import { checkAuth, optionalAuth } from "../../middlewares/checkAuth";
 import { Role } from "../user/user.interface";
 import { orderController } from "./order.controller";
 
@@ -18,12 +18,15 @@ router.post(
 
   orderController.createCheckout
 );
+
 router.post(
   "/donation-checkout",
-  checkAuth(Role.STUDENT, Role.INSTRUCTOR, Role.ADMIN, Role.SUPER_ADMIN),
-
+  optionalAuth,
   orderController.createDonationCheckout
 );
+
+router.get("/donations/track", orderController.trackDonationsByPhone);
+router.get("/donations/by-phone/:phone", orderController.trackDonationsByPhone);
 
 router.get("/me", checkAuth(Role.STUDENT, Role.INSTRUCTOR, Role.ADMIN, Role.SUPER_ADMIN), orderController.getMyOrders);
 

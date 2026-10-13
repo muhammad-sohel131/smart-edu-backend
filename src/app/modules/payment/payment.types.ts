@@ -11,6 +11,7 @@ export type CreateSessionInput = {
   currency: string;
   courseId?: string;
   eventId?: string;
+  billingInfo?: { name?: string; email?: string; phone?: string; [key: string]: any };
 };
 
 export type CreateSessionResult = {

@@ -50,7 +50,7 @@ const markPaidFromWebhook = async (
   }
 
   // Prevent cross-user tampering
-  if (String(order.user) !== normalized.userId) {
+  if (order.user && normalized.userId && String(order.user) !== normalized.userId) {
     console.error(`❌ Order user mismatch - Order user: ${order.user}, Webhook user: ${normalized.userId}`);
     throw new AppError(httpStatus.BAD_REQUEST, "Order does not belong to this user");
   }

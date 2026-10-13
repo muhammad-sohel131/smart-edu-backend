@@ -2,6 +2,7 @@
 import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/AppError";
 import { Order } from "./order.model";
+import { User } from "../user/user.model";
 import { Course } from "../course/course.model";
 import { PaymentService } from "../payment/payment.services";
 import { OrderSource } from "./order.interface";
@@ -140,15 +141,32 @@ const createCheckout = async (
 
 const createDonationCheckout = async (
   fund: string,
-  userId: string,
-  provider: "sslcommerz",
-  amount: number
+  userId?: string,
+  provider: "sslcommerz" = "sslcommerz",
+  amount: number = 0,
+  donorInfo?: { name?: string; email?: string; phone?: string }
 ) => {
+  let linkedUserId: any = userId;
+  if (!linkedUserId && (donorInfo?.phone || donorInfo?.email)) {
+    const existingUser = await User.findOne({
+      $or: [
+        ...(donorInfo.phone ? [{ phone: donorInfo.phone.trim() }] : []),
+        ...(donorInfo.email ? [{ email: donorInfo.email.trim() }] : [])
+      ]
+    });
+    if (existingUser) {
+      linkedUserId = existingUser._id;
+    }
+  }
 
+  const cleanPhone = donorInfo?.phone?.trim() || "";
 
-  // Handle paid courses - create payment session
   const order = await Order.create({
-    user: userId,
+    user: linkedUserId,
+    donorName: donorInfo?.name?.trim(),
+    donorEmail: donorInfo?.email?.trim(),
+    donorPhone: cleanPhone,
+    billingInfo: donorInfo,
     fund: fund,
     price: amount,
     currency: "BDT",
@@ -162,14 +180,46 @@ const createDonationCheckout = async (
     orderId: String(order._id),
     amount: amount,
     currency: 'BDT',
-    userId: String(userId),
-    source: "Donation"
+    userId: linkedUserId ? String(linkedUserId) : String(order._id),
+    source: "Donation",
+    billingInfo: donorInfo
   });
 
   order.providerSessionId = session.sessionId;
   await order.save();
 
   return { orderId: String(order._id), checkoutUrl: session.checkoutUrl };
+};
+
+const getDonationsByPhone = async (phone: string) => {
+  if (!phone) throw new AppError(httpStatus.BAD_REQUEST, "Phone number is required");
+  const cleanPhone = phone.trim();
+
+  const usersWithPhone = await User.find({ phone: cleanPhone }).select('_id');
+  const userIds = usersWithPhone.map(u => u._id);
+
+  const query: any = {
+    itemType: "Donation",
+    isDeleted: false,
+    $or: [
+      { donorPhone: cleanPhone },
+      { "billingInfo.phone": cleanPhone },
+      ...(userIds.length > 0 ? [{ user: { $in: userIds } }] : [])
+    ]
+  };
+
+  const donations = await Order.find(query).sort({ createdAt: -1 });
+  const totalDonated = donations
+    .filter(d => d.status === "paid")
+    .reduce((sum, d) => sum + (d.price || 0), 0);
+
+  return {
+    phone: cleanPhone,
+    totalDonated,
+    count: donations.length,
+    paidCount: donations.filter(d => d.status === "paid").length,
+    donations
+  };
 };
 
 
@@ -372,5 +422,6 @@ export const OrderServices = {
   getOrders,
   cancelOrder,
   createDonationCheckout,
+  getDonationsByPhone,
   createCheckoutForEvent
 };

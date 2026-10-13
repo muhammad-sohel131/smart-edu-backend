@@ -7,7 +7,10 @@ export type OrderSource = "course" | "event" | "Donation";
 
 export interface IOrder {
     _id?: Types.ObjectId;
-    user: Types.ObjectId;
+    user?: Types.ObjectId;
+    donorName?: string;
+    donorEmail?: string;
+    donorPhone?: string;
     itemType: OrderSource;
     courseIds?: string[];
     course?: Types.ObjectId;

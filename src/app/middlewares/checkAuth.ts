@@ -61,3 +61,21 @@ export const checkAuth =
       next(error);
     }
   };
+
+export const optionalAuth = async (req: Request, _res: Response, next: NextFunction) => {
+  try {
+    const accessToken = req.headers.authorization || req.cookies?.accessToken;
+    if (accessToken) {
+      const verifiedToken = verifyToken(
+        accessToken,
+        envVars.JWT_ACCESS_SECRET
+      ) as JwtPayload;
+      if (verifiedToken) {
+        req.user = verifiedToken;
+      }
+    }
+  } catch (_error) {
+    // Continue as guest if token is invalid or expired
+  }
+  next();
+};
