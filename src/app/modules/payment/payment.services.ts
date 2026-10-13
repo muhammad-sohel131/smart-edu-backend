@@ -36,17 +36,19 @@ const markPaidFromWebhook = async (
 ) => {
 
   const order = await Order.findById(normalized.orderId);
-  let course, event;
-  if (normalized.courseId) {
-    course = await Course.findById(normalized.courseId)
-  }
-  if (normalized.eventId) {
-    event = await Event.findById(normalized.eventId)
-  }
-
   if (!order) {
     console.error(`❌ Order not found: ${normalized.orderId}`);
     throw new AppError(httpStatus.NOT_FOUND, `Order not found: ${normalized.orderId}`);
+  }
+
+  let course, event;
+  const targetCourseId = normalized.courseId || order.course;
+  if (targetCourseId) {
+    course = await Course.findById(targetCourseId);
+  }
+  const targetEventId = normalized.eventId || (order as any).event || (order as any).eventId;
+  if (targetEventId) {
+    event = await Event.findById(targetEventId);
   }
 
   // Prevent cross-user tampering
@@ -83,39 +85,52 @@ const markPaidFromWebhook = async (
     await EnrollmentServices.enrollSelf(String(order.course), normalized.userId, course?.instructor);
 
     // Optional: auto-award enrollment points
-    await GamificationServices.addPoints({
-      userId: normalized.userId,
-      points: 20,
-      sourceType: order.itemType,
-      courseId: String(order.course),
-      reason: "Course enrollment",
-    });
-    await Course.findByIdAndUpdate(
-      normalized.courseId,
-      {
-        $inc: { noOfStudents: 1 },
-      },
-      { new: true }
-    );
+    if (normalized.userId) {
+      await GamificationServices.addPoints({
+        userId: normalized.userId,
+        points: 20,
+        sourceType: order.itemType,
+        courseId: String(order.course),
+        reason: "Course enrollment",
+      });
+    }
+    if (targetCourseId) {
+      await Course.findByIdAndUpdate(
+        targetCourseId,
+        {
+          $inc: { noOfStudents: 1 },
+        },
+        { new: true }
+      );
+    }
   }
 
   if (order.itemType === "event") {
-    console.log("Enrolling for event:", event)
-
-    event.attendees = event.attendees || [];
-
-    if (!event.attendees.includes(normalized.userId as any)) {
-      event.attendees.push(normalized.userId as any);
-      await event.save();
+    if (!event && targetEventId) {
+      event = await Event.findById(targetEventId);
     }
-    // Optional: auto-award enrollment points
-    await GamificationServices.addPoints({
-      userId: normalized.userId,
-      points: event.pointsReward || 0,
-      sourceType: order.itemType,
-      eventId: String(event._id),
-      reason: "Registered for event",
-    });
+    console.log("Enrolling for event:", event);
+
+    if (event) {
+      event.attendees = event.attendees || [];
+
+      if (normalized.userId && !event.attendees.includes(normalized.userId as any)) {
+        event.attendees.push(normalized.userId as any);
+        await event.save();
+      }
+      // Optional: auto-award enrollment points
+      if (normalized.userId) {
+        await GamificationServices.addPoints({
+          userId: normalized.userId,
+          points: event.pointsReward || 0,
+          sourceType: order.itemType,
+          eventId: String(event._id),
+          reason: "Registered for event",
+        });
+      }
+    } else {
+      console.warn(`⚠️ Event not found for order ${order._id}`);
+    }
   }
 
   /* --------------------------------------------------------------------

@@ -8,8 +8,8 @@ import { envVars } from "../../config/env";
 const getFrontendUrl = () => envVars.FRONTEND_URL || "http://localhost:3000";
 
 const sslcommerzSuccess = catchAsync(async (req: Request, res: Response) => {
-    const orderId = req.query.orderId as string;
-    const { val_id, amount, currency } = req.body;
+    const orderId = (req.query.orderId as string) || req.body?.tran_id || req.body?.orderId;
+    const { val_id, amount, currency } = req.body || {};
     
     const order = await Order.findById(orderId);
     if (order && order.status !== "paid") {
@@ -21,7 +21,7 @@ const sslcommerzSuccess = catchAsync(async (req: Request, res: Response) => {
             orderId: String(order._id),
             userId: order.user ? String(order.user) : undefined,
             courseId: order.course ? String(order.course) : undefined,
-            eventId: order.eventId ? String(order.eventId) : undefined,
+            eventId: (order as any).event ? String((order as any).event) : (order as any).eventId ? String((order as any).eventId) : undefined,
         });
     }
 
@@ -38,7 +38,7 @@ const sslcommerzSuccess = catchAsync(async (req: Request, res: Response) => {
 });
 
 const sslcommerzFail = catchAsync(async (req: Request, res: Response) => {
-    const orderId = req.query.orderId as string;
+    const orderId = (req.query.orderId as string) || req.body?.tran_id || req.body?.orderId;
     if (orderId) {
         const order = await Order.findById(orderId);
         if (order && order.itemType === "Donation") {
@@ -52,7 +52,7 @@ const sslcommerzFail = catchAsync(async (req: Request, res: Response) => {
 });
 
 const sslcommerzCancel = catchAsync(async (req: Request, res: Response) => {
-    const orderId = req.query.orderId as string;
+    const orderId = (req.query.orderId as string) || req.body?.tran_id || req.body?.orderId;
     if (orderId) {
         const order = await Order.findById(orderId);
         if (order && order.itemType === "Donation") {
@@ -66,7 +66,7 @@ const sslcommerzCancel = catchAsync(async (req: Request, res: Response) => {
 });
 
 const sslcommerzIpn = catchAsync(async (req: Request, res: Response) => {
-    const { tran_id, val_id, amount, currency, status } = req.body;
+    const { tran_id, val_id, amount, currency, status } = req.body || {};
     
     if (status === 'VALID' || status === 'VALIDATED') {
         const order = await Order.findById(tran_id);
@@ -79,7 +79,7 @@ const sslcommerzIpn = catchAsync(async (req: Request, res: Response) => {
                 orderId: String(order._id),
                 userId: String(order.user),
                 courseId: order.course ? String(order.course) : undefined,
-                eventId: order.eventId ? String(order.eventId) : undefined,
+                eventId: (order as any).event ? String((order as any).event) : (order as any).eventId ? String((order as any).eventId) : undefined,
             });
         }
     }
