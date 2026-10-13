@@ -14,17 +14,18 @@ const ensureCourse = async (courseId: string) => {
 };
 
 // Idempotent self-enroll (used by payment success)
-const enrollSelf = async (courseId: string, userId: string, instructor: string) => {
-  await ensureCourse(courseId);
+const enrollSelf = async (courseId: string, userId: string, instructor?: string) => {
+  const course = await ensureCourse(courseId);
   const existing = await Enrollment.findOne({ course: courseId, user: userId });
   if (existing) throw new AppError(httpStatus.FORBIDDEN, "You Enrolled Before");
 
+  const instructorId = instructor || course.instructor;
   const now = new Date();
   const res = await Enrollment.create({
-    course: courseId, user: userId, status: "enrolled", instructor: instructor,
+    course: courseId, user: userId, status: "enrolled", instructor: instructorId,
     progress: 0, startedAt: now, lastActivityAt: now
   });
-  return res
+  return res;
 };
 
 const getMyEnrollment = async (courseId: string, userId: string) => {
@@ -35,7 +36,16 @@ const getMyEnrollment = async (courseId: string, userId: string) => {
 };
 
 const listMyEnrollments = async (userId: string) =>
-  Enrollment.find({ user: userId, isDeleted: false }).populate("course").sort({ updatedAt: -1 });
+  Enrollment.find({ user: userId, isDeleted: false })
+    .populate({
+      path: "course",
+      populate: {
+        path: "instructor",
+        select: "name email picture avatar",
+      },
+    })
+    .populate("instructor", "name email picture avatar")
+    .sort({ updatedAt: -1 });
 
 const listCourseEnrollments = async (courseId: string, actor: { userId: string; role: string }) => {
   const course = await ensureCourse(courseId);

@@ -238,7 +238,15 @@ const getCourseStats = async (instructorId: string) => {
 const getStudentDashboard = async (studentId: string) => {
   // Get student's enrollments with course data
   const enrollments = await Enrollment.find({ user: studentId })
-    .populate('course', 'title thumbnail category price rating reviews instructor')
+    .populate({
+      path: 'course',
+      select: 'title thumbnail category price rating reviews instructor duration slug',
+      populate: {
+        path: 'instructor',
+        select: 'name email picture avatar',
+      },
+    })
+    .populate('instructor', 'name email picture avatar')
     .sort({ updatedAt: -1 });
 
   // Calculate stats
