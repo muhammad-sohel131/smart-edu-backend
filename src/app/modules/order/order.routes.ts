@@ -43,7 +43,7 @@ router.get(
 
 router.get(
   "/session/:sessionId",
-  checkAuth(Role.STUDENT, Role.INSTRUCTOR, Role.ADMIN, Role.SUPER_ADMIN),
+  optionalAuth,
   orderController.getOrderBySession
 );
 

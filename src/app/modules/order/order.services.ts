@@ -256,7 +256,12 @@ const getOrderBySessionId = async (
 
   if (!ord) throw new AppError(httpStatus.NOT_FOUND, "Order Not Found");
 
-  const isOwner = String(ord.user) === String(actor.userId);
+  // Allow public access to Donation orders (no login needed)
+  if (ord.itemType === "Donation") {
+    return ord;
+  }
+
+  const isOwner = ord.user && String(ord.user) === String(actor.userId);
   const isAdmin = actor.role === "ADMIN" || actor.role === "SUPER_ADMIN";
   if (!(isOwner || isAdmin))
     throw new AppError(httpStatus.FORBIDDEN, "Forbidden");

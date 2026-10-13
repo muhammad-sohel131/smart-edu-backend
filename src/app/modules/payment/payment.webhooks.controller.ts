@@ -19,20 +19,49 @@ const sslcommerzSuccess = catchAsync(async (req: Request, res: Response) => {
             amount: Number(amount || order.price),
             currency: currency || "BDT",
             orderId: String(order._id),
-            userId: String(order.user),
+            userId: order.user ? String(order.user) : undefined,
             courseId: order.course ? String(order.course) : undefined,
             eventId: order.eventId ? String(order.eventId) : undefined,
         });
+    }
+
+    if (order && order.itemType === "Donation") {
+        const phone = order.donorPhone || order.billingInfo?.phone || "";
+        const donorName = order.donorName || order.billingInfo?.name || "";
+        const donatedAmount = order.price || 0;
+        return res.redirect(
+            `${getFrontendUrl()}/donation?tab=track&phone=${encodeURIComponent(phone)}&success=true&amount=${donatedAmount}&name=${encodeURIComponent(donorName)}&orderId=${orderId}`
+        );
     }
 
     res.redirect(`${getFrontendUrl()}/payments/success?session_id=${orderId}`);
 });
 
 const sslcommerzFail = catchAsync(async (req: Request, res: Response) => {
+    const orderId = req.query.orderId as string;
+    if (orderId) {
+        const order = await Order.findById(orderId);
+        if (order && order.itemType === "Donation") {
+            const phone = order.donorPhone || order.billingInfo?.phone || "";
+            return res.redirect(
+                `${getFrontendUrl()}/donation?tab=track&phone=${encodeURIComponent(phone)}&failed=true`
+            );
+        }
+    }
     res.redirect(`${getFrontendUrl()}/payments/failed`);
 });
 
 const sslcommerzCancel = catchAsync(async (req: Request, res: Response) => {
+    const orderId = req.query.orderId as string;
+    if (orderId) {
+        const order = await Order.findById(orderId);
+        if (order && order.itemType === "Donation") {
+            const phone = order.donorPhone || order.billingInfo?.phone || "";
+            return res.redirect(
+                `${getFrontendUrl()}/donation?tab=track&phone=${encodeURIComponent(phone)}&canceled=true`
+            );
+        }
+    }
     res.redirect(`${getFrontendUrl()}/payments/failed`);
 });
 
