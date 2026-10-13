@@ -131,6 +131,7 @@ const createCheckout = async (
     courseId: String(course._id),
     userId: String(userId),
     source: itemType,
+    billingInfo: billingInfo as any,
   });
 
   order.providerSessionId = session.sessionId;
