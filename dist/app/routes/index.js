@@ -19,11 +19,11 @@ const event_route_1 = require("../modules/event/event.route");
 const gamification_routes_1 = require("../modules/gamification/gamification.routes");
 const badge_routes_1 = require("../modules/badge/badge.routes");
 const upload_route_1 = require("../modules/upload/upload.route");
-const product_routes_1 = require("../modules/ecom/product/product.routes");
 const dashboard_routes_1 = require("../modules/dashboard/dashboard.routes");
 const category_routes_1 = require("../modules/category/category.routes");
 const city_routes_1 = require("../modules/city/city.routes");
 const school_routes_1 = require("../modules/school/school.routes");
+const donationSpend_routes_1 = require("../modules/donationSpend/donationSpend.routes");
 exports.router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -110,14 +110,10 @@ const moduleRoutes = [
         path: "/upload",
         route: upload_route_1.UploadRoutes
     },
-    // {
-    //     path: "/ecom/categories",
-    //     route: CategoryRoutes
-    // },
     {
-        path: "/ecom/products",
-        route: product_routes_1.ProductRoutes
-    }
+        path: "/donation-spends",
+        route: donationSpend_routes_1.DonationSpendRoutes
+    },
 ];
 moduleRoutes.forEach(route => {
     exports.router.use(route.path, route.route);

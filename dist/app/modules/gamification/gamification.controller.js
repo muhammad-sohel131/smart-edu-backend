@@ -28,14 +28,19 @@ const getMyPoints = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0,
     });
 }));
 const getLeaderboard = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { limit, scope, value, courseId, schoolId, cityId } = req.query;
+    const { limit, scope, value, filterValue, courseId, schoolId, cityId, city } = req.query;
+    const effectiveCityId = (cityId || city || (scope === "city" ? (value || filterValue) : undefined));
+    const effectiveSchoolId = (schoolId || (scope === "school" ? (value || filterValue) : undefined));
+    const effectiveFilterValue = (filterValue || value || effectiveCityId || effectiveSchoolId);
     const data = yield gamification_service_1.GamificationServices.getLeaderboard({
         limit: Number(limit) || 20,
-        scope: scope || "global",
-        value: value,
+        scope: scope || (effectiveCityId ? "city" : effectiveSchoolId ? "school" : "global"),
+        filterValue: effectiveFilterValue,
+        value: (value || filterValue),
         courseId: courseId,
-        schoolId: schoolId,
-        cityId: cityId
+        schoolId: effectiveSchoolId,
+        cityId: effectiveCityId,
+        city: effectiveCityId
     });
     (0, sendResponse_1.sendResponse)(res, {
         statusCode: http_status_codes_1.default.OK,

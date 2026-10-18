@@ -33,8 +33,9 @@ const createCheckout = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void
 }));
 const createDonationCheckout = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const token = req.user;
-    const { provider, fund, amount, } = req.body;
-    const data = yield order_services_1.OrderServices.createDonationCheckout(fund, token === null || token === void 0 ? void 0 : token.userId, provider, amount);
+    const { provider, fund, amount, donorInfo, billingInfo } = req.body;
+    const info = donorInfo || billingInfo || {};
+    const data = yield order_services_1.OrderServices.createDonationCheckout(fund, token === null || token === void 0 ? void 0 : token.userId, provider, amount, info);
     (0, sendResponse_1.sendResponse)(res, {
         statusCode: http_status_codes_1.default.CREATED,
         success: true,
@@ -42,21 +43,14 @@ const createDonationCheckout = (0, catchAsync_1.catchAsync)((req, res) => __awai
         data,
     });
 }));
-/**
- * 🛒 Checkout for eCommerce (client-provided cart)
- * - Body: { items: [...], shippingAddress: {...}, currency?: "USD" }
- */
-const checkoutEcommerce = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const token = req.user;
-    const session = yield order_services_1.OrderServices.startEcommerceCheckoutFromClient({
-        userId: token.userId,
-        payload: req.body
-    });
+const trackDonationsByPhone = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const phone = req.query.phone || req.params.phone;
+    const data = yield order_services_1.OrderServices.getDonationsByPhone(phone);
     (0, sendResponse_1.sendResponse)(res, {
         statusCode: http_status_codes_1.default.OK,
         success: true,
-        message: "E-commerce checkout session created successfully",
-        data: session, // { orderId, sessionId, checkoutUrl }
+        message: "Donations fetched successfully",
+        data,
     });
 }));
 /**
@@ -90,7 +84,7 @@ const getOrderById = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0
     });
 }));
 /**
- * 🔍 Get order details by Stripe/Toyyib sessionId
+ * 🔍 Get order details by sessionId (SSLCommerz)/Toyyib sessionId
  */
 const getOrderBySession = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const token = req.user;
@@ -118,47 +112,10 @@ const getOrders = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, v
         data: orders,
     });
 }));
-const fulfillEcommerce = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const token = req.user;
-    const { id } = req.params;
-    const result = yield order_services_1.OrderServices.fulfillEcommerceOrder(id, req.body, // { status, trackingNumber?, carrier? }
-    { userId: token.userId, role: token.role });
-    (0, sendResponse_1.sendResponse)(res, {
-        statusCode: http_status_codes_1.default.OK,
-        success: true,
-        message: "Order fulfillment updated",
-        data: result,
-    });
-}));
-const updateTracking = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const token = req.user;
-    const { id } = req.params;
-    const result = yield order_services_1.OrderServices.updateEcommerceTracking(id, req.body, // { trackingNumber, carrier?, status? }
-    { userId: token.userId, role: token.role });
-    (0, sendResponse_1.sendResponse)(res, {
-        statusCode: http_status_codes_1.default.OK,
-        success: true,
-        message: "Tracking updated",
-        data: result,
-    });
-}));
-const markDelivered = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const token = req.user;
-    const { id } = req.params;
-    const result = yield order_services_1.OrderServices.markEcommerceDelivered(id, req.body, // { deliveredAt? }
-    { userId: token.userId, role: token.role });
-    (0, sendResponse_1.sendResponse)(res, {
-        statusCode: http_status_codes_1.default.OK,
-        success: true,
-        message: "Order marked delivered",
-        data: result,
-    });
-}));
 const cancelOrder = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const token = req.user;
     const { id } = req.params;
-    const result = yield order_services_1.OrderServices.cancelOrder(id, req.body, // { reason?, restock? }
-    { userId: token.userId, role: token.role });
+    const result = yield order_services_1.OrderServices.cancelOrder(id, req.body, { userId: token.userId, role: token.role });
     (0, sendResponse_1.sendResponse)(res, {
         statusCode: http_status_codes_1.default.OK,
         success: true,
@@ -168,14 +125,11 @@ const cancelOrder = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 0,
 }));
 exports.orderController = {
     createCheckout,
-    checkoutEcommerce,
     getMyOrders,
     getOrderById,
     getOrderBySession,
     getOrders,
-    fulfillEcommerce,
-    updateTracking,
-    markDelivered,
     cancelOrder,
-    createDonationCheckout
+    createDonationCheckout,
+    trackDonationsByPhone
 };

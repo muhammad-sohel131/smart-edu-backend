@@ -17,14 +17,31 @@ exports.redisClient = (0, redis_1.createClient)({
     password: env_1.envVars.REDIS.REDIS_PASSWORD,
     socket: {
         host: env_1.envVars.REDIS.REDIS_HOST,
-        port: Number(env_1.envVars.REDIS.REDIS_PORT)
+        port: Number(env_1.envVars.REDIS.REDIS_PORT),
+        reconnectStrategy: (retries) => {
+            if (retries > 2) {
+                return false; // Stop retrying after 2 attempts
+            }
+            return 500;
+        }
     }
 });
-exports.redisClient.on('error', err => console.log('Redis Client Error', err));
+exports.redisClient.on('error', (err) => {
+    // Log error only if redis was previously connected or in debug
+    if (exports.redisClient.isOpen) {
+        console.error('Redis Client Error:', err);
+    }
+});
 const connectRedis = () => __awaiter(void 0, void 0, void 0, function* () {
-    if (!exports.redisClient.isOpen) {
-        yield exports.redisClient.connect();
-        console.log("Redis is connected!");
+    try {
+        if (!exports.redisClient.isOpen) {
+            yield exports.redisClient.connect();
+            console.log("Redis is connected!");
+        }
+    }
+    catch (err) {
+        console.warn(`⚠️ Warning: Redis connection failed (${(err === null || err === void 0 ? void 0 : err.message) || err}).`);
+        console.warn("⚠️ Server started successfully, but OTP/Redis features will be disabled until valid Redis credentials are provided.");
     }
 });
 exports.connectRedis = connectRedis;

@@ -16,6 +16,7 @@ exports.UploadServices = void 0;
 const cloudinary_1 = __importDefault(require("../../config/cloudinary"));
 const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
+const axios_1 = __importDefault(require("axios"));
 const uploadMedia = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     const { fileBase64, fileMimetype, folder = "asia-lms", filename } = payload;
     if (!fileBase64) {
@@ -36,6 +37,16 @@ const uploadMedia = (payload) => __awaiter(void 0, void 0, void 0, function* () 
     else if (isVideo) {
         resourceType = "video";
     }
+    let currentTimestamp;
+    try {
+        // Fetch actual time from Google to prevent "Stale request" errors when system clock is out of sync
+        const timeRes = yield axios_1.default.head("https://google.com", { timeout: 3000 });
+        currentTimestamp = Math.floor(new Date(timeRes.headers.date).getTime() / 1000);
+    }
+    catch (err) {
+        // Fallback to local system time + 1 hour (since the clock seems to be 1 hour behind)
+        currentTimestamp = Math.floor(Date.now() / 1000) + 3600;
+    }
     try {
         const result = yield cloudinary_1.default.uploader.upload(fileBase64, {
             folder,
@@ -44,6 +55,7 @@ const uploadMedia = (payload) => __awaiter(void 0, void 0, void 0, function* () 
             use_filename: !!filename,
             filename_override: filename,
             pages: isPdf ? true : undefined, // Extract first page thumbnail for PDFs
+            timestamp: currentTimestamp,
         });
         // Optional thumbnail for PDFs (first page as image)
         const thumbnailUrl = isPdf

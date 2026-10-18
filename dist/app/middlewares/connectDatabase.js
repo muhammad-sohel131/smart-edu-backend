@@ -17,7 +17,9 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const env_1 = require("../config/env");
 const connectDatabase = () => (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        // Connect to database logic would go here
+        if (mongoose_1.default.connection.readyState === 1) {
+            return next();
+        }
         yield mongoose_1.default.connect(env_1.envVars.DB_URL);
         console.log("Connected to DB");
         next();

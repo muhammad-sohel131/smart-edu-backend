@@ -8,7 +8,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "ts-node-dev --respawn --transpile-only ./src/server.ts",
     "lint": "npx eslint ./src",
-    "build": "tsc"
+    "build": "tsc",
+    "seed:badges": "node src/scripts/seedBadges.js",
+    "seed:locations": "node src/scripts/seedLocationData.js",
+    "seed:free-courses": "node src/scripts/seedFreeCourses.js"
   },
   "keywords": [],
   "author": "",

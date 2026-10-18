@@ -18,19 +18,19 @@ const listCourses = async (query: any) => {
   const filter: FilterQuery<ICourse> = {  };
 
   
-if(query.q){
-   if (query.q?.length <= 8) {
-    const searchRegex = new RegExp(query.q, 'i');
-    filter.$or = [
-      { title: searchRegex },
-      { description: searchRegex },
-      { category: searchRegex }
-    ];
+  const searchVal = (query.q || query.search)?.toString()?.trim();
+  if (searchVal) {
+    if (searchVal.length <= 8) {
+      const searchRegex = new RegExp(searchVal, 'i');
+      filter.$or = [
+        { title: searchRegex },
+        { description: searchRegex },
+        { category: searchRegex }
+      ];
+    } else {
+      filter.$text = { $search: searchVal };
+    }
   }
-  else {
-    filter.$text = { $search: query.q };
-  }
-}
 
   // 🎯 Category (support single or multiple)
   if (query.categories) {
@@ -42,8 +42,9 @@ if(query.q){
     if (rawCategories.length > 0) {
       const escapeRegex = (s: string) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
       const regexPatterns = rawCategories.map((c: string) => {
-        const withSpaces = c.replace(/[_-]/g, " ");
-        return new RegExp(`^(${escapeRegex(c)}|${escapeRegex(withSpaces)})$`, "i");
+        const words = c.split(/[\s_&\-]+/).filter(Boolean);
+        const flexiblePattern = words.map((w: string) => escapeRegex(w)).join("(?:[\\s_&\\-]+|and)");
+        return new RegExp(`^${flexiblePattern}$`, "i");
       });
       filter.category = { $in: regexPatterns };
     }

@@ -317,6 +317,9 @@ const getOrders = async (query: any = {}) => {
       $match: {
         $or: [
           { providerPaymentId: { $regex: q, $options: 'i' } },
+          { donorName: { $regex: q, $options: 'i' } },
+          { donorEmail: { $regex: q, $options: 'i' } },
+          { donorPhone: { $regex: q, $options: 'i' } },
           { "userData.name": { $regex: q, $options: 'i' } },
           { "userData.email": { $regex: q, $options: 'i' } }
         ]
@@ -335,8 +338,28 @@ const getOrders = async (query: any = {}) => {
             else: { $toString: "$_id" }
           }
         },
-        userName: "$userData.name",
-        userEmail: "$userData.email",
+        userName: {
+          $ifNull: [
+            "$donorName",
+            { $ifNull: ["$billingInfo.name", "$userData.name"] }
+          ]
+        },
+        userEmail: {
+          $ifNull: [
+            "$donorEmail",
+            { $ifNull: ["$billingInfo.email", "$userData.email"] }
+          ]
+        },
+        userPhone: {
+          $ifNull: [
+            "$donorPhone",
+            { $ifNull: ["$billingInfo.phone", "$userData.phone"] }
+          ]
+        },
+        donorName: 1,
+        donorEmail: 1,
+        donorPhone: 1,
+        billingInfo: 1,
         amount: "$price",
         currency: "$currency",
         date: "$createdAt",
@@ -375,6 +398,9 @@ const getOrders = async (query: any = {}) => {
   // Format the data
   const formattedOrders = orders.map(order => ({
     ...order,
+    donorName: order.donorName || order.userName,
+    donorEmail: order.donorEmail || order.userEmail,
+    donorPhone: order.donorPhone || order.userPhone || order.billingInfo?.phone,
     amountFormatted: `${order.amount.toFixed(2)} ${order.currency.toUpperCase()}`,
     dateFormatted: new Date(order.date).toLocaleDateString('en-US', {
       year: 'numeric',

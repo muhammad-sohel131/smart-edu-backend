@@ -20,6 +20,7 @@ const event_model_1 = require("./event.model");
 const gamification_service_1 = require("../gamification/gamification.service"); // optional if already exists
 const badge_service_1 = require("../badge/badge.service");
 const order_services_1 = require("../order/order.services");
+const order_model_1 = require("../order/order.model");
 const create = (payload, userId) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const now = new Date((_a = payload.eventDate) !== null && _a !== void 0 ? _a : Date.now());
@@ -44,7 +45,35 @@ const listPublic = () => __awaiter(void 0, void 0, void 0, function* () {
     return event_model_1.Event.find({ isDeleted: false }).sort({ startDate: 1 });
 });
 const getMyRegisteredEvents = (userId) => __awaiter(void 0, void 0, void 0, function* () {
-    return event_model_1.Event.find({ isDeleted: false, attendees: userId }).sort({ startDate: 1 });
+    const orders = yield order_model_1.Order.find({
+        user: userId,
+        itemType: "event",
+        status: "paid",
+        isDeleted: false,
+    }).select("event price currency status provider createdAt").lean();
+    const eventIdsFromOrders = orders
+        .map((o) => o.event)
+        .filter(Boolean);
+    const events = yield event_model_1.Event.find({
+        isDeleted: false,
+        $or: [
+            { attendees: userId },
+            ...(eventIdsFromOrders.length > 0 ? [{ _id: { $in: eventIdsFromOrders } }] : []),
+        ],
+    })
+        .populate("organizer", "name email picture")
+        .sort({ eventDate: 1, createdAt: -1 })
+        .lean();
+    const orderMap = new Map();
+    orders.forEach((o) => {
+        if (o.event) {
+            orderMap.set(String(o.event), o);
+        }
+    });
+    return events.map((ev) => {
+        const order = orderMap.get(String(ev._id)) || null;
+        return Object.assign(Object.assign({}, ev), { order, isPaid: Boolean(order) || ev.price === 0, registrationDate: (order === null || order === void 0 ? void 0 : order.createdAt) || ev.createdAt });
+    });
 });
 const getAllRegistrations = () => __awaiter(void 0, void 0, void 0, function* () {
     // fetch events with attendees populated

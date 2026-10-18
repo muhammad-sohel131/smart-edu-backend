@@ -131,8 +131,7 @@ const issueBadge = (userId, badgeId, reason) => __awaiter(void 0, void 0, void 0
 const listUserBadges = (userId) => __awaiter(void 0, void 0, void 0, function* () {
     return badge_model_1.UserBadge.find({ user: userId })
         .populate("badge")
-        .sort({ issuedAt: -1 })
-        .populate('');
+        .sort({ issuedAt: -1 });
 });
 /** helper: auto-issue by course/event **/
 const autoIssueBadge = (context) => __awaiter(void 0, void 0, void 0, function* () {

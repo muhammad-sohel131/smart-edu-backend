@@ -55,19 +55,20 @@ const getLeaderboard = async (
   { limit = 20,
     scope,
     filterValue,
+    value,
     courseId,
     schoolId,
-    cityId }: any
+    cityId,
+    city }: any
 ) => {
-  console.log(cityId)
   let sortField = "totalPoints";
-  const match: any = {};
+  const match: any = {
+    "user.isDeleted": { $ne: true }
+  };
   const addFields: any = {};
 
-  // Add student filter
-  // match["user.role"] = "student";
-  // match["user.isDeleted"] = false;
-  // match["user.isActive"] = "active";
+  // Add student filter if needed in future
+  // match["user.role"] = { $in: ["student", "STUDENT"] };
 
   if (courseId) {
     addFields.coursePoints = { $ifNull: [`$byCourse.${courseId}`, 0] };
@@ -93,21 +94,53 @@ const getLeaderboard = async (
     pipeline.push({ $addFields: addFields });
   }
 
+  const effectiveCityId = cityId || city || (scope === "city" ? (filterValue || value) : undefined);
+  const effectiveSchoolId = schoolId || (scope === "school" ? (filterValue || value) : undefined);
+  const effectiveRegion = scope === "region" ? (filterValue || value) : undefined;
+
   // Apply scope filters
-  if (scope === "region" && filterValue) {
-    pipeline.push({ $match: { "user.region": filterValue } });
+  if (effectiveRegion) {
+    pipeline.push({ $match: { "user.region": effectiveRegion } });
   }
 
-  if (scope === "school" && filterValue) {
-    pipeline.push({ $match: { "user.school": filterValue } });
+  if (effectiveSchoolId) {
+    if (Types.ObjectId.isValid(effectiveSchoolId)) {
+      pipeline.push({ $match: { "user.school": new Types.ObjectId(effectiveSchoolId) } });
+    } else {
+      pipeline.push({
+        $lookup: {
+          from: "schools",
+          localField: "user.school",
+          foreignField: "_id",
+          as: "schoolMatch",
+        },
+      });
+      pipeline.push({
+        $match: {
+          "schoolMatch.name": { $regex: new RegExp(`^${effectiveSchoolId}$`, "i") }
+        }
+      });
+    }
   }
 
-  if (scope === "city" && cityId) {
-    pipeline.push({ $match: { "user.city": new Types.ObjectId(cityId) } });
-  }
-
-  if (schoolId) {
-    pipeline.push({ $match: { "user.school": new Types.ObjectId(schoolId) } });
+  if (effectiveCityId) {
+    if (Types.ObjectId.isValid(effectiveCityId)) {
+      pipeline.push({ $match: { "user.city": new Types.ObjectId(effectiveCityId) } });
+    } else {
+      pipeline.push({
+        $lookup: {
+          from: "cities",
+          localField: "user.city",
+          foreignField: "_id",
+          as: "cityMatch",
+        },
+      });
+      pipeline.push({
+        $match: {
+          "cityMatch.name": { $regex: new RegExp(`^${effectiveCityId}$`, "i") }
+        }
+      });
+    }
   }
 
   // Join school and city info
@@ -419,9 +452,9 @@ const getStudentRank = async (
   let sortField = "totalPoints";
   const addFields: any = {};
   const match: any = {
-    "user.role": "student",
-    "user.isDeleted": false,
-    "user.isActive": "active",
+    "user.role": { $in: ["student", "STUDENT"] },
+    "user.isDeleted": { $ne: true },
+    "user.isActive": { $in: ["active", "ACTIVE"] },
   };
 
   // Apply scope filters
@@ -486,9 +519,9 @@ const getStudentRank = async (
           { $unwind: "$user" },
           {
             $match: {
-              "user.role": "student",
-              "user.isDeleted": false,
-              "user.isActive": "active",
+              "user.role": { $in: ["student", "STUDENT"] },
+              "user.isDeleted": { $ne: true },
+              "user.isActive": { $in: ["active", "ACTIVE"] },
               ...(scope === "school" && scopeId ?
                 { "user.school": new Types.ObjectId(scopeId) } : {}),
               ...(scope === "city" && scopeId ?

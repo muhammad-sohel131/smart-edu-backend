@@ -66,7 +66,6 @@ const schoolSchema = new mongoose_1.Schema({
 });
 // Create indexes
 schoolSchema.index({ name: 1, city: 1 }, { unique: true });
-schoolSchema.index({ code: 1 }, { unique: true, sparse: true });
 schoolSchema.index({ city: 1 });
 schoolSchema.index({ isActive: 1 });
 const School = mongoose_1.default.model('School', schoolSchema);

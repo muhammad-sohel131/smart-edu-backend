@@ -229,7 +229,15 @@ const getCourseStats = (instructorId) => __awaiter(void 0, void 0, void 0, funct
 const getStudentDashboard = (studentId) => __awaiter(void 0, void 0, void 0, function* () {
     // Get student's enrollments with course data
     const enrollments = yield enrollment_model_1.Enrollment.find({ user: studentId })
-        .populate('course', 'title thumbnail category price rating reviews instructor')
+        .populate({
+        path: 'course',
+        select: 'title thumbnail category price rating reviews instructor duration slug',
+        populate: {
+            path: 'instructor',
+            select: 'name email picture avatar',
+        },
+    })
+        .populate('instructor', 'name email picture avatar')
         .sort({ updatedAt: -1 });
     // Calculate stats
     const totalCourses = enrollments.length;
@@ -306,25 +314,41 @@ const getAdminStats = () => __awaiter(void 0, void 0, void 0, function* () {
     const earnings = yield order_model_1.Order.aggregate([
         {
             $match: {
-                status: "completed"
+                itemType: "course",
+                status: { $in: ["paid", "completed"] },
+                isDeleted: { $ne: true }
             }
         },
         {
             $group: {
                 _id: null,
-                total: { $sum: "$amount" }
+                total: { $sum: "$price" }
             }
         }
     ]);
-    // Get published courses grouped by month
-    let publishedCoursesByMonth = yield course_model_1.Course.aggregate([
+    const totalDonationsAgg = yield order_model_1.Order.aggregate([
+        {
+            $match: {
+                itemType: "Donation",
+                status: { $in: ["paid", "completed"] },
+                isDeleted: { $ne: true }
+            }
+        },
+        {
+            $group: {
+                _id: null,
+                total: { $sum: "$price" }
+            }
+        }
+    ]);
+    const now = new Date();
+    const oneYearAgo = new Date(new Date().setFullYear(now.getFullYear() - 1));
+    const publishedCoursesAgg = yield course_model_1.Course.aggregate([
         {
             $match: {
                 status: "published",
                 isDeleted: false,
-                createdAt: {
-                    $gte: new Date(new Date().setFullYear(new Date().getFullYear() - 1))
-                }
+                createdAt: { $gte: oneYearAgo }
             }
         },
         {
@@ -340,29 +364,88 @@ const getAdminStats = () => __awaiter(void 0, void 0, void 0, function* () {
             $sort: { "_id.year": 1, "_id.month": 1 }
         }
     ]);
-    // Generate last 12 months with zeros for missing months
-    const last12Months = [];
-    const now = new Date();
+    const coursePurchasedAgg = yield order_model_1.Order.aggregate([
+        {
+            $match: {
+                itemType: "course",
+                status: { $in: ["paid", "completed"] },
+                isDeleted: { $ne: true },
+                createdAt: { $gte: oneYearAgo }
+            }
+        },
+        {
+            $group: {
+                _id: {
+                    year: { $year: "$createdAt" },
+                    month: { $month: "$createdAt" }
+                },
+                amount: { $sum: "$price" },
+                count: { $sum: 1 }
+            }
+        },
+        {
+            $sort: { "_id.year": 1, "_id.month": 1 }
+        }
+    ]);
+    const donationAgg = yield order_model_1.Order.aggregate([
+        {
+            $match: {
+                itemType: "Donation",
+                status: { $in: ["paid", "completed"] },
+                isDeleted: { $ne: true },
+                createdAt: { $gte: oneYearAgo }
+            }
+        },
+        {
+            $group: {
+                _id: {
+                    year: { $year: "$createdAt" },
+                    month: { $month: "$createdAt" }
+                },
+                amount: { $sum: "$price" },
+                count: { $sum: 1 }
+            }
+        },
+        {
+            $sort: { "_id.year": 1, "_id.month": 1 }
+        }
+    ]);
+    const publishedCoursesByMonth = [];
+    const coursePurchasedMoneyByMonth = [];
+    const donationByMonth = [];
     for (let i = 11; i >= 0; i--) {
         const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
-        const found = publishedCoursesByMonth.find(item => item._id.year === year && item._id.month === month);
-        last12Months.push({
+        const foundCourse = publishedCoursesAgg.find(item => item._id.year === year && item._id.month === month);
+        publishedCoursesByMonth.push({
             _id: { year, month },
-            count: found ? found.count : 0
+            count: foundCourse ? foundCourse.count : 0
+        });
+        const foundPurchased = coursePurchasedAgg.find(item => item._id.year === year && item._id.month === month);
+        coursePurchasedMoneyByMonth.push({
+            _id: { year, month },
+            amount: foundPurchased ? foundPurchased.amount : 0,
+            count: foundPurchased ? foundPurchased.count : 0
+        });
+        const foundDonation = donationAgg.find(item => item._id.year === year && item._id.month === month);
+        donationByMonth.push({
+            _id: { year, month },
+            amount: foundDonation ? foundDonation.amount : 0,
+            count: foundDonation ? foundDonation.count : 0
         });
     }
-    // Replace the original result with the complete 12-month data
-    publishedCoursesByMonth = last12Months;
     return {
         totalStudents,
         totalInstructors,
         totalCourses,
-        totalRevenue: ((_a = earnings[0]) === null || _a === void 0 ? void 0 : _a.total) || 0,
+        totalRevenue: (earnings[0] && earnings[0].total) || 0,
+        totalDonations: (totalDonationsAgg[0] && totalDonationsAgg[0].total) || 0,
         pendingCourses,
         publishedCourses,
-        publishedCoursesByMonth
+        publishedCoursesByMonth,
+        coursePurchasedMoneyByMonth,
+        donationByMonth
     };
 });
 exports.DashboardServices = {

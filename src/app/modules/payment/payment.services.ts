@@ -29,7 +29,7 @@ const markPaidFromWebhook = async (
     amount: number;
     currency: string;
     orderId: string;
-    userId: string;
+    userId?: string;
     courseId?: string;
     eventId?: string;
   }
@@ -80,8 +80,7 @@ const markPaidFromWebhook = async (
   /* --------------------------------------------------------------------
    * 🎓 HANDLE COURSE / PACKAGE ENROLLMENT
    * ------------------------------------------------------------------ */
-  if (order.itemType === "course" && order.course) {
-  
+  if (order.itemType === "course" && order.course && normalized.userId) {
     await EnrollmentServices.enrollSelf(String(order.course), normalized.userId, course?.instructor);
 
     // Optional: auto-award enrollment points

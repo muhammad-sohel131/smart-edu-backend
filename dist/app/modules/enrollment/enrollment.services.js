@@ -61,13 +61,14 @@ const ensureCourse = (courseId) => __awaiter(void 0, void 0, void 0, function* (
 });
 // Idempotent self-enroll (used by payment success)
 const enrollSelf = (courseId, userId, instructor) => __awaiter(void 0, void 0, void 0, function* () {
-    yield ensureCourse(courseId);
+    const course = yield ensureCourse(courseId);
     const existing = yield enrollment_model_1.Enrollment.findOne({ course: courseId, user: userId });
     if (existing)
         throw new AppError_1.default(http_status_codes_1.default.FORBIDDEN, "You Enrolled Before");
+    const instructorId = instructor || course.instructor;
     const now = new Date();
     const res = yield enrollment_model_1.Enrollment.create({
-        course: courseId, user: userId, status: "enrolled", instructor: instructor,
+        course: courseId, user: userId, status: "enrolled", instructor: instructorId,
         progress: 0, startedAt: now, lastActivityAt: now
     });
     return res;
@@ -79,7 +80,18 @@ const getMyEnrollment = (courseId, userId) => __awaiter(void 0, void 0, void 0, 
         throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, "Enrollment Not Found");
     return doc;
 });
-const listMyEnrollments = (userId) => __awaiter(void 0, void 0, void 0, function* () { return enrollment_model_1.Enrollment.find({ user: userId, isDeleted: false }).populate("course").sort({ updatedAt: -1 }); });
+const listMyEnrollments = (userId) => __awaiter(void 0, void 0, void 0, function* () {
+    return enrollment_model_1.Enrollment.find({ user: userId, isDeleted: false })
+        .populate({
+        path: "course",
+        populate: {
+            path: "instructor",
+            select: "name email picture avatar",
+        },
+    })
+        .populate("instructor", "name email picture avatar")
+        .sort({ updatedAt: -1 });
+});
 const listCourseEnrollments = (courseId, actor) => __awaiter(void 0, void 0, void 0, function* () {
     const course = yield ensureCourse(courseId);
     const isOwner = String(course.instructor) === String(actor.userId);

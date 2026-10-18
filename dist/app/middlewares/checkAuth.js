@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.checkAuth = void 0;
+exports.optionalAuth = exports.checkAuth = void 0;
 const AppError_1 = __importDefault(require("../errorHelpers/AppError"));
 const jwt_1 = require("../utils/jwt");
 const env_1 = require("../config/env");
@@ -23,11 +23,11 @@ const checkAuth = (...roles) => (req, res, next) => __awaiter(void 0, void 0, vo
     try {
         const accessToken = req.headers.authorization || req.cookies.accessToken;
         if (!accessToken) {
-            throw new AppError_1.default(403, "Missing Access Token");
+            throw new AppError_1.default(401, "Missing Access Token");
         }
         const verifiedToken = (0, jwt_1.verifyToken)(accessToken, env_1.envVars.JWT_ACCESS_SECRET);
         if (!verifiedToken) {
-            throw new AppError_1.default(403, "You are not authorized");
+            throw new AppError_1.default(401, "You are not authorized");
         }
         const isUserExist = yield user_model_1.User.findOne({ email: verifiedToken.email });
         if (!isUserExist) {
@@ -54,3 +54,20 @@ const checkAuth = (...roles) => (req, res, next) => __awaiter(void 0, void 0, vo
     }
 });
 exports.checkAuth = checkAuth;
+const optionalAuth = (req, _res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const accessToken = req.headers.authorization || ((_a = req.cookies) === null || _a === void 0 ? void 0 : _a.accessToken);
+        if (accessToken) {
+            const verifiedToken = (0, jwt_1.verifyToken)(accessToken, env_1.envVars.JWT_ACCESS_SECRET);
+            if (verifiedToken) {
+                req.user = verifiedToken;
+            }
+        }
+    }
+    catch (_error) {
+        // Continue as guest if token is invalid or expired
+    }
+    next();
+});
+exports.optionalAuth = optionalAuth;

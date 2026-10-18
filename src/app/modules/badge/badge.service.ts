@@ -132,8 +132,7 @@ const issueBadge = async (userId: string, badgeId: string, reason?: string) => {
 const listUserBadges = async (userId: string) => {
   return UserBadge.find({ user: userId })
     .populate("badge")
-    .sort({ issuedAt: -1 })
-    .populate('')
+    .sort({ issuedAt: -1 });
 };
 
 /** helper: auto-issue by course/event **/

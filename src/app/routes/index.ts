@@ -22,6 +22,7 @@ import { DashboardRoutes } from "../modules/dashboard/dashboard.routes";
 import { categoriesRoutes } from "../modules/category/category.routes";
 import { cityRoutes } from "../modules/city/city.routes";
 import { schoolRoutes } from "../modules/school/school.routes";
+import { DonationSpendRoutes } from "../modules/donationSpend/donationSpend.routes";
 
 
 export const router = Router()
@@ -111,6 +112,10 @@ const moduleRoutes = [
     {
         path: "/upload",
         route: UploadRoutes
+    },
+    {
+        path: "/donation-spends",
+        route: DonationSpendRoutes
     },
 ]
 

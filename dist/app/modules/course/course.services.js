@@ -19,17 +19,19 @@ const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
 const course_model_1 = require("./course.model");
 const lesson_model_1 = require("../lesson/lesson.model");
 const unit_model_1 = require("../unit/unit.model");
+const user_model_1 = require("../user/user.model");
 const createCourse = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     console.log("Creating course with payload:", payload);
     const course = yield course_model_1.Course.create(payload);
     return course.toObject();
 });
 const listCourses = (query) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     const filter = {};
-    if (query.q) {
-        if (((_a = query.q) === null || _a === void 0 ? void 0 : _a.length) <= 8) {
-            const searchRegex = new RegExp(query.q, 'i');
+    const searchVal = (_b = (_a = (query.q || query.search)) === null || _a === void 0 ? void 0 : _a.toString()) === null || _b === void 0 ? void 0 : _b.trim();
+    if (searchVal) {
+        if (searchVal.length <= 8) {
+            const searchRegex = new RegExp(searchVal, 'i');
             filter.$or = [
                 { title: searchRegex },
                 { description: searchRegex },
@@ -37,13 +39,24 @@ const listCourses = (query) => __awaiter(void 0, void 0, void 0, function* () {
             ];
         }
         else {
-            filter.$text = { $search: query.q };
+            filter.$text = { $search: searchVal };
         }
     }
     // 🎯 Category (support single or multiple)
     if (query.categories) {
-        const categories = query.categories.split(",");
-        filter.category = { $in: categories };
+        const rawCategories = String(query.categories)
+            .split(",")
+            .map((c) => c.trim())
+            .filter(Boolean);
+        if (rawCategories.length > 0) {
+            const escapeRegex = (s) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+            const regexPatterns = rawCategories.map((c) => {
+                const words = c.split(/[\s_&\-]+/).filter(Boolean);
+                const flexiblePattern = words.map((w) => escapeRegex(w)).join("(?:[\\s_&\\-]+|and)");
+                return new RegExp(`^${flexiblePattern}$`, "i");
+            });
+            filter.category = { $in: regexPatterns };
+        }
     }
     // 📚 Level
     if (query.level)
@@ -52,8 +65,15 @@ const listCourses = (query) => __awaiter(void 0, void 0, void 0, function* () {
     if (query.status)
         filter.status = query.status;
     // 👨‍🏫 Instructor
-    if (query.instructor)
-        filter.instructor = query.instructor;
+    if (query.instructor) {
+        const instructorDoc = yield user_model_1.Instructor.findById(query.instructor);
+        if (instructorDoc && instructorDoc.userId) {
+            filter.instructor = instructorDoc.userId;
+        }
+        else {
+            filter.instructor = query.instructor;
+        }
+    }
     // 💰 Free vs Paid filter
     if (query.price === "free") {
         filter.price = 0;
@@ -65,10 +85,10 @@ const listCourses = (query) => __awaiter(void 0, void 0, void 0, function* () {
         filter.price = query.isFree ? 0 : { $gt: 0 };
     }
     // 📄 Pagination and Sorting
-    const page = Number((_b = query.page) !== null && _b !== void 0 ? _b : 1);
-    const limit = Number((_c = query.limit) !== null && _c !== void 0 ? _c : 12);
+    const page = Number((_c = query.page) !== null && _c !== void 0 ? _c : 1);
+    const limit = Number((_d = query.limit) !== null && _d !== void 0 ? _d : 12);
     const skip = (page - 1) * limit;
-    const sort = (_d = query.sort) !== null && _d !== void 0 ? _d : "-createdAt";
+    const sort = (_e = query.sort) !== null && _e !== void 0 ? _e : "-createdAt";
     console.log(filter);
     // ⚡ Fetch items and total count
     const [items, total] = yield Promise.all([

@@ -334,30 +334,50 @@ const getAdminStats = async () => {
     isDeleted: false
   });
 
-  // Calculate total revenue from completed orders
+  // Calculate total revenue from completed course orders
   const earnings = await Order.aggregate([
     {
       $match: {
-        status: "completed"
+        itemType: "course",
+        status: { $in: ["paid", "completed"] },
+        isDeleted: { $ne: true }
       }
     },
     {
       $group: {
         _id: null,
-        total: { $sum: "$amount" }
+        total: { $sum: "$price" }
       }
     }
   ]);
 
-  // Get published courses grouped by month
-  let publishedCoursesByMonth = await Course.aggregate([
+  // Calculate total donations
+  const totalDonationsAgg = await Order.aggregate([
+    {
+      $match: {
+        itemType: "Donation",
+        status: { $in: ["paid", "completed"] },
+        isDeleted: { $ne: true }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: "$price" }
+      }
+    }
+  ]);
+
+  const now = new Date();
+  const oneYearAgo = new Date(new Date().setFullYear(now.getFullYear() - 1));
+
+  // 1. Get published courses grouped by month
+  const publishedCoursesAgg = await Course.aggregate([
     {
       $match: {
         status: "published",
         isDeleted: false,
-        createdAt: {
-          $gte: new Date(new Date().setFullYear(new Date().getFullYear() - 1))
-        }
+        createdAt: { $gte: oneYearAgo }
       }
     },
     {
@@ -374,36 +394,107 @@ const getAdminStats = async () => {
     }
   ]);
 
-  // Generate last 12 months with zeros for missing months
-  const last12Months = [];
-  const now = new Date();
+  // 2. Get course purchased money grouped by month
+  const coursePurchasedAgg = await Order.aggregate([
+    {
+      $match: {
+        itemType: "course",
+        status: { $in: ["paid", "completed"] },
+        isDeleted: { $ne: true },
+        createdAt: { $gte: oneYearAgo }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" }
+        },
+        amount: { $sum: "$price" },
+        count: { $sum: 1 }
+      }
+    },
+    {
+      $sort: { "_id.year": 1, "_id.month": 1 }
+    }
+  ]);
+
+  // 3. Get donations grouped by month
+  const donationAgg = await Order.aggregate([
+    {
+      $match: {
+        itemType: "Donation",
+        status: { $in: ["paid", "completed"] },
+        isDeleted: { $ne: true },
+        createdAt: { $gte: oneYearAgo }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" }
+        },
+        amount: { $sum: "$price" },
+        count: { $sum: 1 }
+      }
+    },
+    {
+      $sort: { "_id.year": 1, "_id.month": 1 }
+    }
+  ]);
+
+  // Generate complete 12 months arrays with zeros for missing months
+  const publishedCoursesByMonth = [];
+  const coursePurchasedMoneyByMonth = [];
+  const donationByMonth = [];
 
   for (let i = 11; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
 
-    const found = publishedCoursesByMonth.find(
-      item => item._id.year === year && item._id.month === month
+    // Published Courses
+    const foundCourse = publishedCoursesAgg.find(
+      (item: any) => item._id.year === year && item._id.month === month
     );
-
-    last12Months.push({
+    publishedCoursesByMonth.push({
       _id: { year, month },
-      count: found ? found.count : 0
+      count: foundCourse ? foundCourse.count : 0
+    });
+
+    // Course Purchased Money
+    const foundPurchased = coursePurchasedAgg.find(
+      (item: any) => item._id.year === year && item._id.month === month
+    );
+    coursePurchasedMoneyByMonth.push({
+      _id: { year, month },
+      amount: foundPurchased ? foundPurchased.amount : 0,
+      count: foundPurchased ? foundPurchased.count : 0
+    });
+
+    // Donations
+    const foundDonation = donationAgg.find(
+      (item: any) => item._id.year === year && item._id.month === month
+    );
+    donationByMonth.push({
+      _id: { year, month },
+      amount: foundDonation ? foundDonation.amount : 0,
+      count: foundDonation ? foundDonation.count : 0
     });
   }
-
-  // Replace the original result with the complete 12-month data
-  publishedCoursesByMonth = last12Months;
 
   return {
     totalStudents,
     totalInstructors,
     totalCourses,
     totalRevenue: earnings[0]?.total || 0,
+    totalDonations: totalDonationsAgg[0]?.total || 0,
     pendingCourses,
     publishedCourses,
-    publishedCoursesByMonth
+    publishedCoursesByMonth,
+    coursePurchasedMoneyByMonth,
+    donationByMonth
   };
 };
 export const DashboardServices = {

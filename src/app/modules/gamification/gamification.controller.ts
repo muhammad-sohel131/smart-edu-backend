@@ -17,15 +17,21 @@ const getMyPoints = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getLeaderboard = catchAsync(async (req, res) => {
-  const { limit, scope, value, courseId, schoolId, cityId } = req.query;
+  const { limit, scope, value, filterValue, courseId, schoolId, cityId, city } = req.query;
+  const effectiveCityId = (cityId || city || (scope === "city" ? (value || filterValue) : undefined)) as string;
+  const effectiveSchoolId = (schoolId || (scope === "school" ? (value || filterValue) : undefined)) as string;
+  const effectiveFilterValue = (filterValue || value || effectiveCityId || effectiveSchoolId) as string;
+
   const data = await GamificationServices.getLeaderboard(
     {
       limit: Number(limit) || 20,
-      scope: (scope as any) || "global",
-      value: value as string,
+      scope: (scope as any) || (effectiveCityId ? "city" : effectiveSchoolId ? "school" : "global"),
+      filterValue: effectiveFilterValue,
+      value: (value || filterValue) as string,
       courseId: courseId as string,
-      schoolId: schoolId as string,
-      cityId: cityId as string
+      schoolId: effectiveSchoolId,
+      cityId: effectiveCityId,
+      city: effectiveCityId
     }
   );
 

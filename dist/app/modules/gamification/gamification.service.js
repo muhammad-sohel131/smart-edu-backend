@@ -43,15 +43,14 @@ const getMyPoints = (userId) => __awaiter(void 0, void 0, void 0, function* () {
     const logs = yield gamification_model_1.PointLog.find({ user: userId }).sort({ createdAt: -1 }).limit(50);
     return { wallet: wallet !== null && wallet !== void 0 ? wallet : { totalPoints: 0, byCourse: {} }, logs };
 });
-const getLeaderboard = (_a) => __awaiter(void 0, [_a], void 0, function* ({ limit = 20, scope, filterValue, courseId, schoolId, cityId }) {
-    console.log(cityId);
+const getLeaderboard = (_a) => __awaiter(void 0, [_a], void 0, function* ({ limit = 20, scope, filterValue, value, courseId, schoolId, cityId, city }) {
     let sortField = "totalPoints";
-    const match = {};
+    const match = {
+        "user.isDeleted": { $ne: true }
+    };
     const addFields = {};
-    // Add student filter
-    // match["user.role"] = "student";
-    // match["user.isDeleted"] = false;
-    // match["user.isActive"] = "active";
+    // Add student filter if needed in future
+    // match["user.role"] = { $in: ["student", "STUDENT"] };
     if (courseId) {
         addFields.coursePoints = { $ifNull: [`$byCourse.${courseId}`, 0] };
         sortField = "coursePoints";
@@ -73,18 +72,52 @@ const getLeaderboard = (_a) => __awaiter(void 0, [_a], void 0, function* ({ limi
     if (Object.keys(addFields).length) {
         pipeline.push({ $addFields: addFields });
     }
+    const effectiveCityId = cityId || city || (scope === "city" ? (filterValue || value) : undefined);
+    const effectiveSchoolId = schoolId || (scope === "school" ? (filterValue || value) : undefined);
+    const effectiveRegion = scope === "region" ? (filterValue || value) : undefined;
     // Apply scope filters
-    if (scope === "region" && filterValue) {
-        pipeline.push({ $match: { "user.region": filterValue } });
+    if (effectiveRegion) {
+        pipeline.push({ $match: { "user.region": effectiveRegion } });
     }
-    if (scope === "school" && filterValue) {
-        pipeline.push({ $match: { "user.school": filterValue } });
+    if (effectiveSchoolId) {
+        if (mongoose_1.Types.ObjectId.isValid(effectiveSchoolId)) {
+            pipeline.push({ $match: { "user.school": new mongoose_1.Types.ObjectId(effectiveSchoolId) } });
+        }
+        else {
+            pipeline.push({
+                $lookup: {
+                    from: "schools",
+                    localField: "user.school",
+                    foreignField: "_id",
+                    as: "schoolMatch",
+                },
+            });
+            pipeline.push({
+                $match: {
+                    "schoolMatch.name": { $regex: new RegExp(`^${effectiveSchoolId}$`, "i") }
+                }
+            });
+        }
     }
-    if (scope === "city" && cityId) {
-        pipeline.push({ $match: { "user.city": new mongoose_1.Types.ObjectId(cityId) } });
-    }
-    if (schoolId) {
-        pipeline.push({ $match: { "user.school": new mongoose_1.Types.ObjectId(schoolId) } });
+    if (effectiveCityId) {
+        if (mongoose_1.Types.ObjectId.isValid(effectiveCityId)) {
+            pipeline.push({ $match: { "user.city": new mongoose_1.Types.ObjectId(effectiveCityId) } });
+        }
+        else {
+            pipeline.push({
+                $lookup: {
+                    from: "cities",
+                    localField: "user.city",
+                    foreignField: "_id",
+                    as: "cityMatch",
+                },
+            });
+            pipeline.push({
+                $match: {
+                    "cityMatch.name": { $regex: new RegExp(`^${effectiveCityId}$`, "i") }
+                }
+            });
+        }
     }
     // Join school and city info
     pipeline.push({
@@ -366,9 +399,9 @@ const getStudentRank = (userId_1, ...args_1) => __awaiter(void 0, [userId_1, ...
     let sortField = "totalPoints";
     const addFields = {};
     const match = {
-        "user.role": "student",
-        "user.isDeleted": false,
-        "user.isActive": "active",
+        "user.role": { $in: ["student", "STUDENT"] },
+        "user.isDeleted": { $ne: true },
+        "user.isActive": { $in: ["active", "ACTIVE"] },
     };
     // Apply scope filters
     if (scope === "school" && scopeId) {
@@ -430,7 +463,7 @@ const getStudentRank = (userId_1, ...args_1) => __awaiter(void 0, [userId_1, ...
                     },
                     { $unwind: "$user" },
                     {
-                        $match: Object.assign(Object.assign({ "user.role": "student", "user.isDeleted": false, "user.isActive": "active" }, (scope === "school" && scopeId ?
+                        $match: Object.assign(Object.assign({ "user.role": { $in: ["student", "STUDENT"] }, "user.isDeleted": { $ne: true }, "user.isActive": { $in: ["active", "ACTIVE"] } }, (scope === "school" && scopeId ?
                             { "user.school": new mongoose_1.Types.ObjectId(scopeId) } : {})), (scope === "city" && scopeId ?
                             { "user.city": new mongoose_1.Types.ObjectId(scopeId) } : {})),
                     },

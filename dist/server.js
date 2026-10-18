@@ -22,17 +22,16 @@ const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         yield mongoose_1.default.connect(env_1.envVars.DB_URL);
         console.log("Connected to DB");
+        yield (0, seedSuperAdmin_1.seedSuperAdmin)();
+        yield (0, redis_config_1.connectRedis)();
         server = app_1.default.listen(env_1.envVars.PORT, () => {
             console.log(`Server is listening to port ${env_1.envVars.PORT}`);
         });
     }
     catch (error) {
-        console.log(error);
+        console.error("Database connection failed:", error);
+        process.exit(1);
     }
 });
-(() => __awaiter(void 0, void 0, void 0, function* () {
-    yield startServer();
-    yield (0, seedSuperAdmin_1.seedSuperAdmin)();
-    yield (0, redis_config_1.connectRedis)();
-}))();
+startServer();
 exports.default = app_1.default;
