@@ -79,7 +79,6 @@ const markPaidFromWebhook = async (
 
   /* --------------------------------------------------------------------
    * 🎓 HANDLE COURSE / PACKAGE ENROLLMENT
-   * ------------------------------------------------------------------ */
   if (order.itemType === "course" && order.course && normalized.userId) {
     await EnrollmentServices.enrollSelf(String(order.course), normalized.userId, course?.instructor);
 
