@@ -8,15 +8,41 @@ import { globalErrorHandle } from "./app/middlewares/globalErrorHandler";
 import { notFound } from "./app/middlewares/notFound";
 import { router } from "./app/routes";
 import "./app/config/passport";
-import "./app/config/passport";
 import { connectDatabase } from "./app/middlewares/connectDatabase";
 
 const app = express();
 
+app.set("trust proxy", 1);
 
+// Allowed origins (handles trailing slash automatically)
+const allowedOrigins = [
+  envVars.FRONTEND_URL,
+  "https://smar-edu-frontend.vercel.app",
+  "http://localhost:3000",
+].filter(Boolean);
 
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // allow requests with no origin (like mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      const cleanOrigin = origin.trim().replace(/\/+$/, "");
+      const isAllowed =
+        allowedOrigins.includes(cleanOrigin) ||
+        /^https:\/\/smar-edu-frontend.*\.vercel\.app$/.test(cleanOrigin);
 
-// Now apply all other middleware AFTER webhook routes
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie", "x-requested-with"],
+  })
+);
+
 app.use(
   expressSession({
     secret: envVars.EXPRESS_SESSION_SECRET,
@@ -28,14 +54,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(cookieParser());
 app.use(express.json());
-app.set("trust proxy", 1);
 app.use(express.urlencoded({ extended: true }));
-app.use(
-  cors({
-    origin: envVars.FRONTEND_URL, // use array to allow multiple origins
-    credentials: true,
-  })
-);
 
 
 app.use("/api", connectDatabase(), router);

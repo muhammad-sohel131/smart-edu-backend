@@ -285,7 +285,7 @@ const getStudentDashboard = (studentId) => __awaiter(void 0, void 0, void 0, fun
     };
 });
 const getAdminStats = () => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b;
     // Count total unique students (users with role "student")
     const totalStudents = yield user_model_1.User.countDocuments({
         role: user_interface_1.Role.STUDENT,
@@ -310,7 +310,7 @@ const getAdminStats = () => __awaiter(void 0, void 0, void 0, function* () {
         status: "published",
         isDeleted: false
     });
-    // Calculate total revenue from completed orders
+    // Calculate total revenue from completed course orders
     const earnings = yield order_model_1.Order.aggregate([
         {
             $match: {
@@ -326,6 +326,7 @@ const getAdminStats = () => __awaiter(void 0, void 0, void 0, function* () {
             }
         }
     ]);
+    // Calculate total donations
     const totalDonationsAgg = yield order_model_1.Order.aggregate([
         {
             $match: {
@@ -343,6 +344,7 @@ const getAdminStats = () => __awaiter(void 0, void 0, void 0, function* () {
     ]);
     const now = new Date();
     const oneYearAgo = new Date(new Date().setFullYear(now.getFullYear() - 1));
+    // 1. Get published courses grouped by month
     const publishedCoursesAgg = yield course_model_1.Course.aggregate([
         {
             $match: {
@@ -364,6 +366,7 @@ const getAdminStats = () => __awaiter(void 0, void 0, void 0, function* () {
             $sort: { "_id.year": 1, "_id.month": 1 }
         }
     ]);
+    // 2. Get course purchased money grouped by month
     const coursePurchasedAgg = yield order_model_1.Order.aggregate([
         {
             $match: {
@@ -387,6 +390,7 @@ const getAdminStats = () => __awaiter(void 0, void 0, void 0, function* () {
             $sort: { "_id.year": 1, "_id.month": 1 }
         }
     ]);
+    // 3. Get donations grouped by month
     const donationAgg = yield order_model_1.Order.aggregate([
         {
             $match: {
@@ -410,6 +414,7 @@ const getAdminStats = () => __awaiter(void 0, void 0, void 0, function* () {
             $sort: { "_id.year": 1, "_id.month": 1 }
         }
     ]);
+    // Generate complete 12 months arrays with zeros for missing months
     const publishedCoursesByMonth = [];
     const coursePurchasedMoneyByMonth = [];
     const donationByMonth = [];
@@ -417,18 +422,21 @@ const getAdminStats = () => __awaiter(void 0, void 0, void 0, function* () {
         const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
-        const foundCourse = publishedCoursesAgg.find(item => item._id.year === year && item._id.month === month);
+        // Published Courses
+        const foundCourse = publishedCoursesAgg.find((item) => item._id.year === year && item._id.month === month);
         publishedCoursesByMonth.push({
             _id: { year, month },
             count: foundCourse ? foundCourse.count : 0
         });
-        const foundPurchased = coursePurchasedAgg.find(item => item._id.year === year && item._id.month === month);
+        // Course Purchased Money
+        const foundPurchased = coursePurchasedAgg.find((item) => item._id.year === year && item._id.month === month);
         coursePurchasedMoneyByMonth.push({
             _id: { year, month },
             amount: foundPurchased ? foundPurchased.amount : 0,
             count: foundPurchased ? foundPurchased.count : 0
         });
-        const foundDonation = donationAgg.find(item => item._id.year === year && item._id.month === month);
+        // Donations
+        const foundDonation = donationAgg.find((item) => item._id.year === year && item._id.month === month);
         donationByMonth.push({
             _id: { year, month },
             amount: foundDonation ? foundDonation.amount : 0,
@@ -439,8 +447,8 @@ const getAdminStats = () => __awaiter(void 0, void 0, void 0, function* () {
         totalStudents,
         totalInstructors,
         totalCourses,
-        totalRevenue: (earnings[0] && earnings[0].total) || 0,
-        totalDonations: (totalDonationsAgg[0] && totalDonationsAgg[0].total) || 0,
+        totalRevenue: ((_a = earnings[0]) === null || _a === void 0 ? void 0 : _a.total) || 0,
+        totalDonations: ((_b = totalDonationsAgg[0]) === null || _b === void 0 ? void 0 : _b.total) || 0,
         pendingCourses,
         publishedCourses,
         publishedCoursesByMonth,

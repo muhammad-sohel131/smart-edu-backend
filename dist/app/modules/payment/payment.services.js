@@ -15,10 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentService = void 0;
 const sslcommerz_1 = require("./providers/sslcommerz");
 const order_model_1 = require("../order/order.model");
-const enrollment_services_1 = require("../enrollment/enrollment.services");
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
 const AppError_1 = __importDefault(require("../../errorHelpers/AppError"));
-const gamification_service_1 = require("../gamification/gamification.service");
 const course_model_1 = require("../course/course.model");
 const event_model_1 = require("../event/event.model");
 const providers = {
@@ -71,51 +69,58 @@ const markPaidFromWebhook = (provider, normalized) => __awaiter(void 0, void 0, 
     yield order.save();
     /* --------------------------------------------------------------------
      * 🎓 HANDLE COURSE / PACKAGE ENROLLMENT
-     * ------------------------------------------------------------------ */
     if (order.itemType === "course" && order.course && normalized.userId) {
-        yield enrollment_services_1.EnrollmentServices.enrollSelf(String(order.course), normalized.userId, course === null || course === void 0 ? void 0 : course.instructor);
+      await EnrollmentServices.enrollSelf(String(order.course), normalized.userId, course?.instructor);
+  
+      // Optional: auto-award enrollment points
+      if (normalized.userId) {
+        await GamificationServices.addPoints({
+          userId: normalized.userId,
+          points: 20,
+          sourceType: order.itemType,
+          courseId: String(order.course),
+          reason: "Course enrollment",
+        });
+      }
+      if (targetCourseId) {
+        await Course.findByIdAndUpdate(
+          targetCourseId,
+          {
+            $inc: { noOfStudents: 1 },
+          },
+          { new: true }
+        );
+      }
+    }
+  
+    if (order.itemType === "event") {
+      if (!event && targetEventId) {
+        event = await Event.findById(targetEventId);
+      }
+      console.log("Enrolling for event:", event);
+  
+      if (event) {
+        event.attendees = event.attendees || [];
+  
+        if (normalized.userId && !event.attendees.includes(normalized.userId as any)) {
+          event.attendees.push(normalized.userId as any);
+          await event.save();
+        }
         // Optional: auto-award enrollment points
         if (normalized.userId) {
-            yield gamification_service_1.GamificationServices.addPoints({
-                userId: normalized.userId,
-                points: 20,
-                sourceType: order.itemType,
-                courseId: String(order.course),
-                reason: "Course enrollment",
-            });
+          await GamificationServices.addPoints({
+            userId: normalized.userId,
+            points: event.pointsReward || 0,
+            sourceType: order.itemType,
+            eventId: String(event._id),
+            reason: "Registered for event",
+          });
         }
-        if (targetCourseId) {
-            yield course_model_1.Course.findByIdAndUpdate(targetCourseId, {
-                $inc: { noOfStudents: 1 },
-            }, { new: true });
-        }
+      } else {
+        console.warn(`⚠️ Event not found for order ${order._id}`);
+      }
     }
-    if (order.itemType === "event") {
-        if (!event && targetEventId) {
-            event = yield event_model_1.Event.findById(targetEventId);
-        }
-        console.log("Enrolling for event:", event);
-        if (event) {
-            event.attendees = event.attendees || [];
-            if (normalized.userId && !event.attendees.includes(normalized.userId)) {
-                event.attendees.push(normalized.userId);
-                yield event.save();
-            }
-            // Optional: auto-award enrollment points
-            if (normalized.userId) {
-                yield gamification_service_1.GamificationServices.addPoints({
-                    userId: normalized.userId,
-                    points: event.pointsReward || 0,
-                    sourceType: order.itemType,
-                    eventId: String(event._id),
-                    reason: "Registered for event",
-                });
-            }
-        }
-        else {
-            console.warn(`⚠️ Event not found for order ${order._id}`);
-        }
-    }
+  
     /* --------------------------------------------------------------------
      * 📜 Audit Log (optional)
      * ------------------------------------------------------------------ */

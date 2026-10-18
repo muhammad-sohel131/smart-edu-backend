@@ -7,6 +7,7 @@ exports.envVars = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const loadEnvVariables = () => {
+    var _a;
     const requiredEnvVariables = [
         "PORT",
         "DB_URL",
@@ -56,7 +57,7 @@ const loadEnvVariables = () => {
         JWT_REFRESH_EXPIRES: process.env.JWT_REFRESH_EXPIRES,
         EXPRESS_SESSION_SECRET: process.env.EXPRESS_SESSION_SECRET,
         GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
-        FRONTEND_URL: process.env.FRONTEND_URL,
+        FRONTEND_URL: (_a = process.env.FRONTEND_URL) === null || _a === void 0 ? void 0 : _a.trim().replace(/\/+$/, ""),
         GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL,
         GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
         // SSL
