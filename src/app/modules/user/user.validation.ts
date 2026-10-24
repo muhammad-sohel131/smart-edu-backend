@@ -8,10 +8,10 @@ export const createUserZodSchema = z.object({
         .max(50, { message: "Name too long: Maximum 50 character" }),
     email: z
         .string({
-            invalid_type_error: "Password must be a string",
+            invalid_type_error: "Email must be a string",
         })
         .email({
-            message: "Invalid email address formate",
+            message: "Invalid email address format",
         })
         .min(5, { message: "Email must be at least 5 character long" })
         .max(100, {
@@ -19,19 +19,19 @@ export const createUserZodSchema = z.object({
         }),
     password: z
         .string({
-            invalid_type_error: "Password mus be a string",
+            invalid_type_error: "Password must be a string",
         })
         .min(8, {
             message: "Password must be at least 8 characters long",
         })
         .regex(/^(?=.*[A-Z])/, {
-            message: "Password must contain at least 1 uppercase",
+            message: "Password must contain at least 1 uppercase letter",
         })
         .regex(/^(?=.*[!@#$%^&*])/, {
             message: "Password must contain at least 1 special character.",
         })
         .regex(/^(?=.*\d)/, {
-            message: "Password must bet contain at least 1 number",
+            message: "Password must contain at least 1 number",
         }),
     role: z.enum(Object.values(Role) as [string]).optional(),
     phone: z
