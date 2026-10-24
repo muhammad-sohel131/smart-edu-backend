@@ -11,7 +11,8 @@
     "build": "tsc",
     "seed:badges": "node src/scripts/seedBadges.js",
     "seed:locations": "node src/scripts/seedLocationData.js",
-    "seed:free-courses": "node src/scripts/seedFreeCourses.js"
+    "seed:free-courses": "node src/scripts/seedFreeCourses.js",
+    "seed:courses": "node src/scripts/seed_category_courses.js"
   },
   "keywords": [],
   "author": "",
