@@ -877,25 +877,31 @@ async function seedInstructorsAndCourses() {
 
   // 1. Ensure Categories exist in CourseCategories collection
   const categoriesToEnsure = [
-    "Digital Marketing",
-    "Office Productivity",
-    "Cybersecurity",
-    "Artificial Intelligence",
-    "Cloud & DevOps",
-    "Web Development",
-    "Mobile App Development",
+    { title: "Digital Marketing", image: "/images/category-digital-marketing.jpg" },
+    { title: "Office Productivity", image: "/images/category-office-productivity.jpg" },
+    { title: "Cybersecurity", image: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1200&q=80" },
+    { title: "Artificial Intelligence", image: "https://res.cloudinary.com/diwvm1tyg/image/upload/v1791632708/asia-lms/courses/course_ai_python.jpg" },
+    { title: "Cloud & DevOps", image: "https://res.cloudinary.com/diwvm1tyg/image/upload/v1791632710/asia-lms/courses/course_cloud_devops.jpg" },
+    { title: "Web Development", image: "https://res.cloudinary.com/diwvm1tyg/image/upload/v1791632707/asia-lms/courses/course_web_dev.jpg" },
+    { title: "Mobile App Development", image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=1200&q=80" },
   ];
 
-  for (const catTitle of categoriesToEnsure) {
-    const existing = await mongoose.connection.collection("coursecategories").findOne({ title: catTitle });
+  for (const cat of categoriesToEnsure) {
+    const existing = await mongoose.connection.collection("coursecategories").findOne({ title: cat.title });
     if (!existing) {
       await mongoose.connection.collection("coursecategories").insertOne({
-        title: catTitle,
+        title: cat.title,
+        image: cat.image,
         isDeleted: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      console.log(`+ Created category: "${catTitle}"`);
+      console.log(`+ Created category: "${cat.title}"`);
+    } else if (!existing.image) {
+      await mongoose.connection.collection("coursecategories").updateOne(
+        { title: cat.title },
+        { $set: { image: cat.image } }
+      );
     }
   }
 
