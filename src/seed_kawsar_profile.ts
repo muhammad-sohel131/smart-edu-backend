@@ -24,7 +24,7 @@ async function main() {
 
   // 1. Update User document
   user.name = "Engr. Kawsar Ahmed";
-  user.picture = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80";
+  user.picture = "/images/kawsar.jpg";
   user.phone = "+880 1712-345678";
   user.address = "Dhaka, Bangladesh";
   user.role = "INSTRUCTOR" as any;
