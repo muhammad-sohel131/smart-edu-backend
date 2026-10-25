@@ -12,7 +12,8 @@
     "seed:badges": "node src/scripts/seedBadges.js",
     "seed:locations": "node src/scripts/seedLocationData.js",
     "seed:free-courses": "node src/scripts/seedFreeCourses.js",
-    "seed:courses": "node src/scripts/seed_category_courses.js"
+    "seed:courses": "node src/scripts/seed_category_courses.js",
+    "seed:instructors": "node src/scripts/seed_instructors_and_courses.js"
   },
   "keywords": [],
   "author": "",
