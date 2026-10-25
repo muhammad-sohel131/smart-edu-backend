@@ -169,7 +169,7 @@ const INSTRUCTORS_DATA = [
       role: "INSTRUCTOR",
       phone: "+880 1789-456123",
       address: "Dhaka, Bangladesh",
-      picture: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80",
+      picture: "/images/khadiza.jpg",
       intro: "Senior Microsoft Certified Trainer (MCT) and Corporate Productivity Specialist with 7+ years of experience transforming business workflows. Has mentored over 10,000 corporate professionals across leading banks, telecom, and multinational companies in Microsoft Excel, Power BI, PowerPoint executive storytelling, and Microsoft 365 cloud tools.",
       socialLinks: {
         linkedin: "https://linkedin.com/in/khadiza-akter-bristi",
