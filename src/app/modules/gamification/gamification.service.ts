@@ -63,12 +63,10 @@ const getLeaderboard = async (
 ) => {
   let sortField = "totalPoints";
   const match: any = {
-    "user.isDeleted": { $ne: true }
+    "user.isDeleted": { $ne: true },
+    "user.role": { $in: ["STUDENT", "student"] }
   };
   const addFields: any = {};
-
-  // Add student filter if needed in future
-  // match["user.role"] = { $in: ["student", "STUDENT"] };
 
   if (courseId) {
     addFields.coursePoints = { $ifNull: [`$byCourse.${courseId}`, 0] };
@@ -312,9 +310,8 @@ const getSchoolsLeaderboard = async (
   schoolId?: string
 ) => {
   const match: any = {
-    // "user.role": "student",
-    // "user.isDeleted": false,
-    // "user.isActive": "active",
+    "user.isDeleted": { $ne: true },
+    "user.role": { $in: ["STUDENT", "student"] }
   };
 
   if (schoolId) {
@@ -380,9 +377,8 @@ const getCitiesLeaderboard = async (
   cityId?: string
 ) => {
   const match: any = {
-    // "user.role": "student",
-    // "user.isDeleted": false,
-    // "user.isActive": "active",
+    "user.isDeleted": { $ne: true },
+    "user.role": { $in: ["STUDENT", "student"] }
   };
 
   if (cityId) {

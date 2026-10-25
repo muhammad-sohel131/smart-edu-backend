@@ -46,11 +46,10 @@ const getMyPoints = (userId) => __awaiter(void 0, void 0, void 0, function* () {
 const getLeaderboard = (_a) => __awaiter(void 0, [_a], void 0, function* ({ limit = 20, scope, filterValue, value, courseId, schoolId, cityId, city }) {
     let sortField = "totalPoints";
     const match = {
-        "user.isDeleted": { $ne: true }
+        "user.isDeleted": { $ne: true },
+        "user.role": { $in: ["STUDENT", "student"] }
     };
     const addFields = {};
-    // Add student filter if needed in future
-    // match["user.role"] = { $in: ["student", "STUDENT"] };
     if (courseId) {
         addFields.coursePoints = { $ifNull: [`$byCourse.${courseId}`, 0] };
         sortField = "coursePoints";
@@ -275,9 +274,8 @@ const getLeaderboard = (_a) => __awaiter(void 0, [_a], void 0, function* ({ limi
 });
 const getSchoolsLeaderboard = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (limit = 20, schoolId) {
     const match = {
-    // "user.role": "student",
-    // "user.isDeleted": false,
-    // "user.isActive": "active",
+        "user.isDeleted": { $ne: true },
+        "user.role": { $in: ["STUDENT", "student"] }
     };
     if (schoolId) {
         match["user.school"] = new mongoose_1.Types.ObjectId(schoolId);
@@ -336,9 +334,8 @@ const getSchoolsLeaderboard = (...args_1) => __awaiter(void 0, [...args_1], void
 });
 const getCitiesLeaderboard = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (limit = 20, cityId) {
     const match = {
-    // "user.role": "student",
-    // "user.isDeleted": false,
-    // "user.isActive": "active",
+        "user.isDeleted": { $ne: true },
+        "user.role": { $in: ["STUDENT", "student"] }
     };
     if (cityId) {
         match["user.city"] = new mongoose_1.Types.ObjectId(cityId);
