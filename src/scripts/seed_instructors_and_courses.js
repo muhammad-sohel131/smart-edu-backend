@@ -653,6 +653,219 @@ const INSTRUCTORS_DATA = [
         ]
       }
     ]
+  },
+  {
+    user: {
+      name: "Moriam Akter Shila",
+      email: "moriam.shila@smartedu.com",
+      role: "INSTRUCTOR",
+      phone: "+880 1912-345678",
+      address: "Dhaka, Bangladesh",
+      picture: "/images/moriam.jpg",
+      intro: "Certified Digital Marketing Strategist, Growth Hacker, and Social Media Marketing Consultant with 6+ years of experience helping brands scale online revenue. Expert in Performance Marketing (Meta & Google Ads), Search Engine Optimization (SEO), Content Strategy, Inbound Funnels, and Marketing Analytics.",
+      socialLinks: {
+        linkedin: "https://linkedin.com",
+        facebook: "https://facebook.com",
+        website: "https://smartedu.com"
+      }
+    },
+    instructor: {
+      designation: "Senior Digital Marketing Strategist & Performance Marketing Lead",
+      enrolledStudent: 390,
+      expertise: [
+        "Digital Marketing",
+        "Meta & Google Ads",
+        "Search Engine Optimization (SEO)",
+        "Social Media Marketing",
+        "Email & Inbound Funnels",
+        "Content Strategy & Analytics"
+      ],
+      certifications: [
+        "Google Certified Digital Marketing Professional",
+        "Meta Certified Digital Marketing Associate",
+        "HubSpot Inbound Marketing Certified",
+        "SEMrush Technical SEO Certified"
+      ]
+    },
+    courses: [
+      {
+        title: "The Complete Digital Marketing Masterclass: From Strategy to Conversion",
+        slug: "complete-digital-marketing-masterclass-strategy-to-conversion",
+        description: "Master modern multi-channel digital marketing. Learn audience targeting, high-converting copy, sales funnel design, marketing analytics, and scaling organic and paid customer acquisition.",
+        price: 2200,
+        level: "beginner",
+        category: "Digital Marketing",
+        thumbnail: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80",
+        introVideo: "https://www.youtube.com/watch?v=bixR-KIJKYM",
+        tags: ["Digital Marketing", "Marketing Strategy", "Social Media", "SEO", "Sales Funnel", "Branding"],
+        noOfStudents: 195,
+        badgeTitle: "Tech Virtuoso",
+        modules: [
+          {
+            title: "Module 1: Inbound Marketing Foundations & Customer Journey Mapping",
+            lessons: [
+              { title: "Understanding the Modern Digital Marketing Ecosystem", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=bixR-KIJKYM", durationSec: 920 },
+              { title: "Buyer Persona Development & Intent-Based Funnel Architecture", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=bixR-KIJKYM", durationSec: 1100 },
+              { title: "Digital Marketing Strategy Framework Template", contentType: "pdf", contentUrl: "https://hubspot.com", durationSec: 600 }
+            ],
+            taskTitle: "Lab: Build a Comprehensive Inbound Customer Journey Map",
+            taskDescription: "Define top-of-funnel (TOFU), middle-of-funnel (MOFU), and bottom-of-funnel (BOFU) customer touchpoints for a targeted niche.",
+            quizTitle: "Quiz: Inbound Marketing Foundations",
+            questions: [
+              {
+                prompt: "What is the primary goal of the Top of the Funnel (TOFU) stage in inbound marketing?",
+                options: [
+                  { text: "Building awareness and attracting the right audience through valuable educational content", isCorrect: true },
+                  { text: "Closing high-ticket sales immediately", isCorrect: false },
+                  { text: "Running retargeting discount promotions", isCorrect: false },
+                  { text: "Collecting payment details", isCorrect: false }
+                ]
+              }
+            ]
+          },
+          {
+            title: "Module 2: High-Converting Landing Pages, Copywriting & Email Automation",
+            lessons: [
+              { title: "The Anatomy of a High-Converting Landing Page", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=bixR-KIJKYM", durationSec: 1050 },
+              { title: "Psychological Copywriting: Hook, Story & Irresistible Offer", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=bixR-KIJKYM", durationSec: 1200 },
+              { title: "Setting Up Drip Email Automation & Lead Nurturing Sequences", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=bixR-KIJKYM", durationSec: 1150 }
+            ],
+            taskTitle: "Project: Design an End-to-End Email Lead Generation Funnel",
+            taskDescription: "Create a 5-step email nurturing sequence integrated with a lead magnet opt-in page.",
+            quizTitle: "Quiz: Conversion Rate Optimization & Funnels",
+            questions: [
+              {
+                prompt: "In conversion rate optimization (CRO), what does A/B testing primarily measure?",
+                options: [
+                  { text: "Comparing two variations of a page to determine which produces higher conversion metrics", isCorrect: true },
+                  { text: "Checking site speed on two different browsers", isCorrect: false },
+                  { text: "Testing payment gateways for downtime", isCorrect: false },
+                  { text: "Translating content into two languages", isCorrect: false }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        title: "Meta Ads & Performance Marketing: Facebook & Instagram Ads Bootcamp",
+        slug: "meta-ads-performance-marketing-facebook-instagram-bootcamp",
+        description: "Scale your revenue with profitable Facebook and Instagram ad campaigns. Master Meta Business Suite, Pixel/Conversions API setup, CBO/ABO budgets, custom lookalike audiences, and high-ROAS creative testing.",
+        price: 2500,
+        level: "intermediate",
+        category: "Digital Marketing",
+        thumbnail: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=1200&q=80",
+        introVideo: "https://www.youtube.com/watch?v=bixR-KIJKYM",
+        tags: ["Meta Ads", "Facebook Ads", "Instagram Marketing", "ROAS", "Performance Marketing", "Pixel Setup"],
+        noOfStudents: 165,
+        badgeTitle: "Problem Solver",
+        modules: [
+          {
+            title: "Module 1: Meta Business Manager, Event Tracking & CAPI Setup",
+            lessons: [
+              { title: "Setting Up Meta Business Portfolio & Domain Verification", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=bixR-KIJKYM", durationSec: 880 },
+              { title: "Configuring Meta Pixel & Server-Side Conversions API (CAPI)", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=bixR-KIJKYM", durationSec: 1250 },
+              { title: "Standard Events, Custom Conversions & Value Tracking", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=bixR-KIJKYM", durationSec: 1020 }
+            ],
+            taskTitle: "Lab: Configure Server-Side CAPI and Verify Event Quality Score",
+            taskDescription: "Implement server-side event tracking and ensure an Event Match Quality score above 8.0 on Meta Business Manager.",
+            quizTitle: "Quiz: Meta Tracking & Infrastructure",
+            questions: [
+              {
+                prompt: "Why is Meta Conversions API (CAPI) critical alongside the traditional browser Pixel?",
+                options: [
+                  { text: "It bypasses browser ad-blockers and iOS privacy restrictions by sending events directly from the server", isCorrect: true },
+                  { text: "It reduces Facebook ad costs automatically by 50%", isCorrect: false },
+                  { text: "It guarantees viral reach without running paid ads", isCorrect: false },
+                  { text: "It replaces the need for a website", isCorrect: false }
+                ]
+              }
+            ]
+          },
+          {
+            title: "Module 2: Campaign Structure, Audience Targeting & Scaling Strategies",
+            lessons: [
+              { title: "Advantage+ Campaign Budget (CBO) vs Ad Set Budget (ABO)", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=bixR-KIJKYM", durationSec: 1100 },
+              { title: "Building High-Intent Custom Audiences & Value-Based Lookalikes (1-5%)", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=bixR-KIJKYM", durationSec: 1200 },
+              { title: "Scaling Winning Ad Sets Vertically and Horizontally without Burning Budget", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=bixR-KIJKYM", durationSec: 1300 }
+            ],
+            taskTitle: "Project: Deploy a Live Multi-Tier Meta Retargeting Campaign",
+            taskDescription: "Design a full funnel campaign with separate prospecting, cart abandoner retargeting, and dynamic product ads (DPA).",
+            quizTitle: "Quiz: Meta Campaign Scaling & Optimization",
+            questions: [
+              {
+                prompt: "What is the recommended horizontal scaling technique in Meta Ads?",
+                options: [
+                  { text: "Duplicating successful ad sets to test new lookalike or broad audience angles", isCorrect: true },
+                  { text: "Increasing daily budget by 500% in one click", isCorrect: false },
+                  { text: "Deleting all active campaigns every 24 hours", isCorrect: false },
+                  { text: "Running ads only between 2 AM and 4 AM", isCorrect: false }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        title: "Modern Search Engine Optimization (SEO) & Google Ranking Blueprint",
+        slug: "modern-seo-google-ranking-blueprint",
+        description: "Rank on Google page 1 with white-hat SEO techniques. Master AI-assisted keyword intent mapping, On-Page optimization, Core Web Vitals, Schema markup, technical audits, and building authoritative backlinks.",
+        price: 1900,
+        level: "intermediate",
+        category: "Digital Marketing",
+        thumbnail: "https://images.unsplash.com/photo-1571786256017-aee7a0c009b6?auto=format&fit=crop&w=1200&q=80",
+        introVideo: "https://www.youtube.com/watch?v=DvwS7cV9GmQ",
+        tags: ["SEO", "Google Ranking", "Keyword Research", "Technical SEO", "Backlinks", "Content Strategy"],
+        noOfStudents: 140,
+        badgeTitle: "Master Architect",
+        modules: [
+          {
+            title: "Module 1: Keyword Research, Search Intent & Competitor Analysis",
+            lessons: [
+              { title: "Understanding Google Search Algorithms & Helpful Content System", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=DvwS7cV9GmQ", durationSec: 950 },
+              { title: "Finding Low-Competition, High-Value Keywords with SEMrush & Ahrefs", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=DvwS7cV9GmQ", durationSec: 1200 },
+              { title: "Mapping Keywords to Search Intent (Informational, Commercial, Transactional)", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=DvwS7cV9GmQ", durationSec: 1040 }
+            ],
+            taskTitle: "Lab: Build a 100-Keyword Topical Authority Content Map",
+            taskDescription: "Group keywords into pillar and cluster topics to establish topical authority in your chosen niche.",
+            quizTitle: "Quiz: Keyword Strategy & Search Intent",
+            questions: [
+              {
+                prompt: "Why is matching Search Intent more important than exact-match keyword density in modern SEO?",
+                options: [
+                  { text: "Because Google's NLP models rank content that directly and comprehensively answers the searcher's specific goal", isCorrect: true },
+                  { text: "Because keywords no longer exist in search engines", isCorrect: false },
+                  { text: "Because search intent only applies to paid ads", isCorrect: false },
+                  { text: "Because keyword stuffing is rewarded", isCorrect: false }
+                ]
+              }
+            ]
+          },
+          {
+            title: "Module 2: Technical SEO, Schema Markup & Authority Backlink Building",
+            lessons: [
+              { title: "Crawling & Indexing: Robots.txt, XML Sitemaps & Canonical Tags", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=DvwS7cV9GmQ", durationSec: 1120 },
+              { title: "Structured Data: Implementing JSON-LD Schema for Rich Snippets", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=DvwS7cV9GmQ", durationSec: 1180 },
+              { title: "White-Hat Link Building: Digital PR, Guest Posting & Skyscraper Outreach", contentType: "video", contentUrl: "https://www.youtube.com/watch?v=DvwS7cV9GmQ", durationSec: 1260 }
+            ],
+            taskTitle: "Capstone: Complete 50-Point Technical SEO Audit of a Live Website",
+            taskDescription: "Conduct a full audit using Screaming Frog and Google Search Console, identifying broken links, orphan pages, and Core Web Vital issues.",
+            quizTitle: "Quiz: Technical SEO & Authority Assessment",
+            questions: [
+              {
+                prompt: "What is the primary purpose of a 'canonical' tag (rel='canonical')?",
+                options: [
+                  { text: "To tell search engines which URL represents the master copy of a page, preventing duplicate content issues", isCorrect: true },
+                  { text: "To block Google from indexing the website", isCorrect: false },
+                  { text: "To increase page load speed by 3x", isCorrect: false },
+                  { text: "To translate pages into other languages", isCorrect: false }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
   }
 ];
 
@@ -664,6 +877,7 @@ async function seedInstructorsAndCourses() {
 
   // 1. Ensure Categories exist in CourseCategories collection
   const categoriesToEnsure = [
+    "Digital Marketing",
     "Office Productivity",
     "Cybersecurity",
     "Artificial Intelligence",
