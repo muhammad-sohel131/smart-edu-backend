@@ -12,7 +12,7 @@ const sslcommerzSuccess = catchAsync(async (req: Request, res: Response) => {
     const { val_id, amount, currency } = req.body || {};
     
     const order = await Order.findById(orderId);
-    if (order && order.status !== "paid") {
+    if (order) {
         await PaymentService.markPaidFromWebhook("sslcommerz", {
             providerPaymentId: val_id || `sslcz_${orderId}`,
             providerSessionId: val_id,
@@ -70,7 +70,7 @@ const sslcommerzIpn = catchAsync(async (req: Request, res: Response) => {
     
     if (status === 'VALID' || status === 'VALIDATED') {
         const order = await Order.findById(tran_id);
-        if (order && order.status !== "paid") {
+        if (order) {
             await PaymentService.markPaidFromWebhook("sslcommerz", {
                 providerPaymentId: val_id || `sslcz_${tran_id}`,
                 providerSessionId: val_id,

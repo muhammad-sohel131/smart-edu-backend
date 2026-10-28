@@ -2,6 +2,7 @@
 import { CreateSessionInput } from "./payment.types";
 import { SSLCommerzProvider } from "./providers/sslcommerz";
 import { Order } from "../order/order.model";
+import { Enrollment } from "../enrollment/enrollment.model";
 import { EnrollmentServices } from "../enrollment/enrollment.services";
 import httpStatus from "http-status-codes";
 import AppError from "../../errorHelpers/AppError";
@@ -65,44 +66,69 @@ const markPaidFromWebhook = async (
 
   // Validate payment amount (allow higher amount to account for gateway convenience fees)
   const expectedAmount = order.price;
-  if (normalized.amount < expectedAmount - 1) { 
+  if (order.status !== "paid" && normalized.amount < expectedAmount - 1) { 
     console.error(`❌ Amount mismatch - Expected at least: ${expectedAmount - 1}, Received: ${normalized.amount}`);
     throw new AppError(httpStatus.BAD_REQUEST, "Payment amount does not match order amount");
   }
 
-
   // Mark order as paid (idempotent update)
-  order.providerPaymentId = normalized.providerPaymentId;
-  order.providerSessionId = normalized.providerSessionId ?? order.providerSessionId;
-  order.status = "paid";
-  await order.save();
+  if (order.status !== "paid") {
+    order.providerPaymentId = normalized.providerPaymentId;
+    order.providerSessionId = normalized.providerSessionId ?? order.providerSessionId;
+    order.status = "paid";
+    await order.save();
+  }
+
+  const studentUserId = normalized.userId || (order.user ? String(order.user) : undefined);
+  const courseIdToEnroll = normalized.courseId || (order.course ? String(order.course) : undefined);
 
   /* --------------------------------------------------------------------
    * 🎓 HANDLE COURSE / PACKAGE ENROLLMENT
-  if (order.itemType === "course" && order.course && normalized.userId) {
-    await EnrollmentServices.enrollSelf(String(order.course), normalized.userId, course?.instructor);
+   * ------------------------------------------------------------------ */
+  if (order.itemType === "course" && courseIdToEnroll && studentUserId) {
+    try {
+      const existingEnrollment = await Enrollment.findOne({ course: courseIdToEnroll, user: studentUserId });
+      if (!existingEnrollment) {
+        await EnrollmentServices.enrollSelf(
+          String(courseIdToEnroll),
+          studentUserId,
+          course?.instructor ? String(course.instructor) : undefined
+        );
 
-    // Optional: auto-award enrollment points
-    if (normalized.userId) {
-      await GamificationServices.addPoints({
-        userId: normalized.userId,
-        points: 20,
-        sourceType: order.itemType,
-        courseId: String(order.course),
-        reason: "Course enrollment",
-      });
-    }
-    if (targetCourseId) {
-      await Course.findByIdAndUpdate(
-        targetCourseId,
-        {
-          $inc: { noOfStudents: 1 },
-        },
-        { new: true }
-      );
+        // Auto-award enrollment points
+        try {
+          await GamificationServices.addPoints({
+            userId: studentUserId,
+            points: 20,
+            sourceType: "enrollment",
+            courseId: String(courseIdToEnroll),
+            reason: "Course enrollment",
+          });
+        } catch (pointErr) {
+          console.warn("Gamification points notice:", pointErr);
+        }
+
+        if (targetCourseId) {
+          await Course.findByIdAndUpdate(
+            targetCourseId,
+            {
+              $inc: { noOfStudents: 1 },
+            },
+            { new: true }
+          );
+        }
+        console.log(`✅ Successfully enrolled student ${studentUserId} in course ${courseIdToEnroll}`);
+      } else {
+        console.log(`ℹ️ Student ${studentUserId} is already enrolled in course ${courseIdToEnroll}`);
+      }
+    } catch (enrollErr) {
+      console.error("Error creating enrollment during payment fulfillment:", enrollErr);
     }
   }
 
+  /* --------------------------------------------------------------------
+   * 🎫 HANDLE EVENT REGISTRATION
+   * ------------------------------------------------------------------ */
   if (order.itemType === "event") {
     if (!event && targetEventId) {
       event = await Event.findById(targetEventId);
@@ -112,19 +138,23 @@ const markPaidFromWebhook = async (
     if (event) {
       event.attendees = event.attendees || [];
 
-      if (normalized.userId && !event.attendees.includes(normalized.userId as any)) {
-        event.attendees.push(normalized.userId as any);
+      if (studentUserId && !event.attendees.map((a: any) => String(a)).includes(studentUserId)) {
+        event.attendees.push(studentUserId as any);
         await event.save();
       }
       // Optional: auto-award enrollment points
-      if (normalized.userId) {
-        await GamificationServices.addPoints({
-          userId: normalized.userId,
-          points: event.pointsReward || 0,
-          sourceType: order.itemType,
-          eventId: String(event._id),
-          reason: "Registered for event",
-        });
+      if (studentUserId) {
+        try {
+          await GamificationServices.addPoints({
+            userId: studentUserId,
+            points: event.pointsReward || 0,
+            sourceType: order.itemType,
+            eventId: String(event._id),
+            reason: "Registered for event",
+          });
+        } catch (pointErr) {
+          console.warn("Event points notice:", pointErr);
+        }
       }
     } else {
       console.warn(`⚠️ Event not found for order ${order._id}`);

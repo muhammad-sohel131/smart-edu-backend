@@ -20,7 +20,7 @@ const sslcommerzSuccess = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(v
     const orderId = req.query.orderId || ((_a = req.body) === null || _a === void 0 ? void 0 : _a.tran_id) || ((_b = req.body) === null || _b === void 0 ? void 0 : _b.orderId);
     const { val_id, amount, currency } = req.body || {};
     const order = yield order_model_1.Order.findById(orderId);
-    if (order && order.status !== "paid") {
+    if (order) {
         yield payment_services_1.PaymentService.markPaidFromWebhook("sslcommerz", {
             providerPaymentId: val_id || `sslcz_${orderId}`,
             providerSessionId: val_id,
@@ -68,7 +68,7 @@ const sslcommerzIpn = (0, catchAsync_1.catchAsync)((req, res) => __awaiter(void 
     const { tran_id, val_id, amount, currency, status } = req.body || {};
     if (status === 'VALID' || status === 'VALIDATED') {
         const order = yield order_model_1.Order.findById(tran_id);
-        if (order && order.status !== "paid") {
+        if (order) {
             yield payment_services_1.PaymentService.markPaidFromWebhook("sslcommerz", {
                 providerPaymentId: val_id || `sslcz_${tran_id}`,
                 providerSessionId: val_id,

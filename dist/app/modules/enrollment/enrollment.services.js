@@ -63,8 +63,9 @@ const ensureCourse = (courseId) => __awaiter(void 0, void 0, void 0, function* (
 const enrollSelf = (courseId, userId, instructor) => __awaiter(void 0, void 0, void 0, function* () {
     const course = yield ensureCourse(courseId);
     const existing = yield enrollment_model_1.Enrollment.findOne({ course: courseId, user: userId });
-    if (existing)
-        throw new AppError_1.default(http_status_codes_1.default.FORBIDDEN, "You Enrolled Before");
+    if (existing) {
+        return existing;
+    }
     const instructorId = instructor || course.instructor;
     const now = new Date();
     const res = yield enrollment_model_1.Enrollment.create({

@@ -17,7 +17,9 @@ const ensureCourse = async (courseId: string) => {
 const enrollSelf = async (courseId: string, userId: string, instructor?: string) => {
   const course = await ensureCourse(courseId);
   const existing = await Enrollment.findOne({ course: courseId, user: userId });
-  if (existing) throw new AppError(httpStatus.FORBIDDEN, "You Enrolled Before");
+  if (existing) {
+    return existing;
+  }
 
   const instructorId = instructor || course.instructor;
   const now = new Date();
