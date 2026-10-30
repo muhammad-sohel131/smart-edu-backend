@@ -1,8 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
-import { checkAuth } from "../../middlewares/checkAuth";
-import { Role } from "../user/user.interface";
+import { optionalAuth } from "../../middlewares/checkAuth";
 import { UploadController } from "./upload.controller";
 
 const router = Router();
@@ -17,7 +16,7 @@ const upload = multer({
   },
   fileFilter: (req, file, cb) => {
     // Optional: Validate file types
-    const allowedTypes = /jpeg|jpg|png|gif|pdf|mp4|mov|avi|doc|docx|ppt|pptx|txt|csv/;
+    const allowedTypes = /jpeg|jpg|png|gif|webp|svg|pdf|mp4|mov|avi|doc|docx|ppt|pptx|txt|csv/;
     const extname = allowedTypes.test(
       path.extname(file.originalname).toLowerCase()
     );
@@ -32,7 +31,13 @@ const upload = multer({
 
 router.post(
   "/",
-  checkAuth(Role.STUDENT, Role.INSTRUCTOR, Role.ADMIN, Role.SUPER_ADMIN),
+  optionalAuth,
+  upload.single("file"),
+  UploadController.uploadFile
+);
+
+router.post(
+  "/public",
   upload.single("file"),
   UploadController.uploadFile
 );

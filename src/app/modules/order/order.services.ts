@@ -146,11 +146,13 @@ const createDonationCheckout = async (
   userId?: string,
   provider: "sslcommerz" = "sslcommerz",
   amount: number = 0,
-  donorInfo?: { name?: string; email?: string; phone?: string }
+  donorInfo?: { name?: string; email?: string; phone?: string; image?: string; avatar?: string }
 ) => {
   let linkedUserId: any = userId;
+  let existingUser: any = null;
+
   if (!linkedUserId && (donorInfo?.phone || donorInfo?.email)) {
-    const existingUser = await User.findOne({
+    existingUser = await User.findOne({
       $or: [
         ...(donorInfo.phone ? [{ phone: donorInfo.phone.trim() }] : []),
         ...(donorInfo.email ? [{ email: donorInfo.email.trim() }] : [])
@@ -159,16 +161,23 @@ const createDonationCheckout = async (
     if (existingUser) {
       linkedUserId = existingUser._id;
     }
+  } else if (linkedUserId) {
+    existingUser = await User.findById(linkedUserId);
   }
 
   const cleanPhone = donorInfo?.phone?.trim() || "";
+  const donorPhoto = donorInfo?.image?.trim() || donorInfo?.avatar?.trim() || existingUser?.picture || "";
 
   const order = await Order.create({
     user: linkedUserId,
     donorName: donorInfo?.name?.trim(),
     donorEmail: donorInfo?.email?.trim(),
     donorPhone: cleanPhone,
-    billingInfo: donorInfo,
+    donorImage: donorPhoto,
+    billingInfo: {
+      ...donorInfo,
+      image: donorPhoto,
+    },
     fund: fund,
     price: amount,
     currency: "BDT",
@@ -184,7 +193,10 @@ const createDonationCheckout = async (
     currency: 'BDT',
     userId: linkedUserId ? String(linkedUserId) : String(order._id),
     source: "Donation",
-    billingInfo: donorInfo
+    billingInfo: {
+      ...donorInfo,
+      image: donorPhoto,
+    }
   });
 
   order.providerSessionId = session.sessionId;
@@ -359,6 +371,7 @@ const getOrders = async (query: any = {}) => {
         donorName: 1,
         donorEmail: 1,
         donorPhone: 1,
+        donorImage: 1,
         billingInfo: 1,
         amount: "$price",
         currency: "$currency",
@@ -401,6 +414,7 @@ const getOrders = async (query: any = {}) => {
     donorName: order.donorName || order.userName,
     donorEmail: order.donorEmail || order.userEmail,
     donorPhone: order.donorPhone || order.userPhone || order.billingInfo?.phone,
+    donorImage: order.donorImage || order.billingInfo?.image || order.userData?.picture || null,
     amountFormatted: `${order.amount.toFixed(2)} ${order.currency.toUpperCase()}`,
     dateFormatted: new Date(order.date).toLocaleDateString('en-US', {
       year: 'numeric',

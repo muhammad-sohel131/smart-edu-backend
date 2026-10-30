@@ -11,6 +11,7 @@ export interface IOrder {
     donorName?: string;
     donorEmail?: string;
     donorPhone?: string;
+    donorImage?: string;
     itemType: OrderSource;
     courseIds?: string[];
     course?: Types.ObjectId;

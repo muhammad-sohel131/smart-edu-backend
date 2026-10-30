@@ -10,18 +10,33 @@ import jwt  from "jsonwebtoken";
 import { sendResetPasswordEmail } from "../../utils/sendEmail";
 
 const credentialsLogin = async (payload: Partial<IUser>) => {
-  const { email, password } = payload;
+  const email = payload.email?.trim();
+  const rawPassword = payload.password as string;
+  const trimmedPassword = rawPassword ? rawPassword.trim() : "";
 
-  const isUserExist = await User.findOne({ email });
+  const isUserExist = await User.findOne({
+    $or: [
+      { email: email },
+      { email: { $regex: new RegExp(`^${email}$`, "i") } }
+    ]
+  });
 
   if (!isUserExist) {
     throw new AppError(httpStatus.BAD_REQUEST, "Email does not exist");
   }
 
-  const isPasswordMatched = await bcryptjs.compare(
-    password as string,
+  // Try trimmed password first, fallback to raw password if needed
+  let isPasswordMatched = await bcryptjs.compare(
+    trimmedPassword,
     isUserExist.password as string
   );
+
+  if (!isPasswordMatched && rawPassword && rawPassword !== trimmedPassword) {
+    isPasswordMatched = await bcryptjs.compare(
+      rawPassword,
+      isUserExist.password as string
+    );
+  }
 
   if (!isPasswordMatched) {
     throw new AppError(httpStatus.BAD_REQUEST, "Incorrect Password");

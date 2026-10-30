@@ -5,6 +5,7 @@ const OrderSchema = new Schema<IOrder>({
     donorName: { type: String },
     donorEmail: { type: String },
     donorPhone: { type: String, index: true },
+    donorImage: { type: String },
     itemType: { type: String, enum: ["course", "event", "Donation"], required: true },
     course: { type: String },
     fund: {type: String},

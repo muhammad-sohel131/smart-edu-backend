@@ -33,18 +33,30 @@ const env_1 = require("../../config/env");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const sendEmail_1 = require("../../utils/sendEmail");
 const credentialsLogin = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    const { email, password } = payload;
-    const isUserExist = yield user_model_1.User.findOne({ email });
+    var _a;
+    const email = (_a = payload.email) === null || _a === void 0 ? void 0 : _a.trim();
+    const rawPassword = payload.password;
+    const trimmedPassword = rawPassword ? rawPassword.trim() : "";
+    const isUserExist = yield user_model_1.User.findOne({
+        $or: [
+            { email: email },
+            { email: { $regex: new RegExp(`^${email}$`, "i") } }
+        ]
+    });
     if (!isUserExist) {
         throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Email does not exist");
     }
-    const isPasswordMatched = yield bcryptjs_1.default.compare(password, isUserExist.password);
+    // Try trimmed password first, fallback to raw password if needed
+    let isPasswordMatched = yield bcryptjs_1.default.compare(trimmedPassword, isUserExist.password);
+    if (!isPasswordMatched && rawPassword && rawPassword !== trimmedPassword) {
+        isPasswordMatched = yield bcryptjs_1.default.compare(rawPassword, isUserExist.password);
+    }
     if (!isPasswordMatched) {
         throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Incorrect Password");
     }
     const { accessToken, refreshToken } = (0, userTokens_1.createUserTokens)(isUserExist);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _a = isUserExist.toObject(), { password: pass } = _a, rest = __rest(_a, ["password"]);
+    const _b = isUserExist.toObject(), { password: pass } = _b, rest = __rest(_b, ["password"]);
     return {
         accessToken,
         refreshToken,
