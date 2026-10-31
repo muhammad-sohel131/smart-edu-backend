@@ -11,10 +11,14 @@ export const checkAuth =
   (...roles: string[]) =>
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const accessToken = req.headers.authorization || req.cookies.accessToken;
+      let accessToken = req.headers.authorization || req.cookies?.accessToken;
 
       if (!accessToken) {
         throw new AppError(401, "Missing Access Token");
+      }
+
+      if (typeof accessToken === "string" && accessToken.startsWith("Bearer ")) {
+        accessToken = accessToken.slice(7).trim();
       }
 
       const verifiedToken = verifyToken(
@@ -64,7 +68,10 @@ export const checkAuth =
 
 export const optionalAuth = async (req: Request, _res: Response, next: NextFunction) => {
   try {
-    const accessToken = req.headers.authorization || req.cookies?.accessToken;
+    let accessToken = req.headers.authorization || req.cookies?.accessToken;
+    if (typeof accessToken === "string" && accessToken.startsWith("Bearer ")) {
+      accessToken = accessToken.slice(7).trim();
+    }
     if (accessToken) {
       const verifiedToken = verifyToken(
         accessToken,
