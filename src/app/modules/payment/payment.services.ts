@@ -88,14 +88,32 @@ const markPaidFromWebhook = async (
         const studentUser = studentUserId ? await User.findById(studentUserId) : null;
         const courseDoc = targetCourseId ? await Course.findById(targetCourseId) : null;
 
+        let couponDoc: any = null;
+        if ((order as any).couponCode) {
+          try {
+            const { Coupon } = await import("../coupon/coupon.model");
+            couponDoc = await Coupon.findOne({ code: (order as any).couponCode.trim().toUpperCase(), isDeleted: false });
+          } catch (cErr) {
+            console.error("Error looking up coupon in payment webhook:", cErr);
+          }
+        }
+
+        const spendTitle = couponDoc
+          ? `Scholarship Coupon: ${couponDoc.code} (${courseDoc?.title || "Course"})`
+          : `Scholarship Subsidy: ${courseDoc?.title || "Course"}`;
+
+        const spendDesc = couponDoc
+          ? `Single-use scholarship coupon "${couponDoc.code}" (${(order as any).discountPercentage}%) redeemed by ${studentUser?.name || "Student"} for course "${courseDoc?.title || "Course"}". Subsidized ৳${(order as any).discountAmount} from original price ৳${(order as any).originalPrice}.`
+          : `Automatic scholarship discount (${(order as any).discountPercentage}%) subsidy applied for course enrollment "${courseDoc?.title || "Course"}". Reduced ৳${(order as any).discountAmount} from original price ৳${(order as any).originalPrice}.`;
+
         const spend = await DonationSpend.create({
-          title: `Scholarship Subsidy: ${courseDoc?.title || "Course"}`,
+          title: spendTitle,
           fund: "educational-scholarships",
           amount: (order as any).discountAmount,
           category: "Scholarships & Stipends",
           recipient: `${studentUser?.name || (order as any).billingInfo?.name || "Student"} (${studentUser?.email || (order as any).billingInfo?.email || ""})`,
-          description: `Automatic scholarship discount (${(order as any).discountPercentage}%) subsidy applied for course enrollment "${courseDoc?.title || "Course"}". Reduced ৳${(order as any).discountAmount} from original price ৳${(order as any).originalPrice}.`,
-          handledBy: "Auto System (Scholarship Fund)",
+          description: spendDesc,
+          handledBy: couponDoc ? "Coupon System (Scholarship Fund)" : "Auto System (Scholarship Fund)",
           createdBy: studentUserId ? (studentUserId as any) : undefined,
           order: order._id,
           course: courseDoc?._id,
@@ -104,6 +122,22 @@ const markPaidFromWebhook = async (
           studentUser: studentUserId ? (studentUserId as any) : undefined,
           spentDate: new Date()
         });
+
+        // Mark coupon as used and disabled immediately
+        if (couponDoc) {
+          couponDoc.isUsed = true;
+          couponDoc.isActive = false; // Coupon is disabled once used
+          couponDoc.usedBy = studentUserId ? (studentUserId as any) : undefined;
+          couponDoc.usedAt = new Date();
+          couponDoc.usedOrder = order._id;
+          couponDoc.usedCourse = courseDoc?._id;
+          couponDoc.reducedAmount = (order as any).discountAmount;
+          couponDoc.originalPrice = (order as any).originalPrice;
+          couponDoc.finalPaidPrice = order.price;
+          couponDoc.donationSpendId = spend._id;
+          await couponDoc.save();
+          console.log(`✅ Single-use coupon ${couponDoc.code} marked as used & disabled`);
+        }
 
         (order as any).scholarshipFundDeducted = true;
         (order as any).donationSpendId = spend._id;

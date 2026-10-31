@@ -24,6 +24,7 @@ import { cityRoutes } from "../modules/city/city.routes";
 import { schoolRoutes } from "../modules/school/school.routes";
 import { DonationSpendRoutes } from "../modules/donationSpend/donationSpend.routes";
 import { CourseDiscountRoutes } from "../modules/courseDiscount/courseDiscount.routes";
+import { CouponRoutes } from "../modules/coupon/coupon.routes";
 
 
 export const router = Router()
@@ -121,6 +122,10 @@ const moduleRoutes = [
     {
         path: "/course-discount",
         route: CourseDiscountRoutes
+    },
+    {
+        path: "/coupons",
+        route: CouponRoutes
     },
 ]
 

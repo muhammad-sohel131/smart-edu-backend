@@ -161,7 +161,9 @@ const getSubsidyHistory = async (query: any = {}) => {
       reducedAmount: discountAmount,
       paidAmount: studentPrice,
       fund: "educational-scholarships",
-      scholarshipFundDeducted: ord.scholarshipFundDeducted
+      scholarshipFundDeducted: ord.scholarshipFundDeducted,
+      couponCode: ord.couponCode || null,
+      isCoupon: Boolean(ord.couponCode)
     };
   });
 
@@ -182,3 +184,4 @@ export const CourseDiscountServices = {
   updateDiscount,
   getSubsidyHistory
 };
+

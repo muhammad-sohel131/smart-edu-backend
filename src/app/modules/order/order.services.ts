@@ -52,17 +52,46 @@ const resolvePrice = async (course: any, couponCode?: string) => {
   let discountAmount = 0;
   let discountPercentage = 0;
   let finalPrice = basePrice;
+  let appliedCoupon: any = null;
 
-  try {
-    const { CourseDiscountServices } = await import("../courseDiscount/courseDiscount.service");
-    const discount = await CourseDiscountServices.getDiscount();
-    if (discount && discount.isActive && discount.percentage > 0 && basePrice > 0) {
-      discountPercentage = discount.percentage;
-      discountAmount = Math.round((basePrice * discount.percentage) / 100);
-      finalPrice = Math.max(0, basePrice - discountAmount);
+  // 1. Check coupon code if provided
+  if (couponCode && couponCode.trim() && basePrice > 0) {
+    const cleanCode = couponCode.trim().toUpperCase();
+    const { Coupon } = await import("../coupon/coupon.model");
+    const couponDoc = await Coupon.findOne({ code: cleanCode, isDeleted: false });
+
+    if (!couponDoc) {
+      throw new AppError(httpStatus.NOT_FOUND, `Invalid coupon code "${couponCode}"`);
     }
-  } catch (err) {
-    console.error("Error checking course discount in resolvePrice:", err);
+    if (couponDoc.isUsed) {
+      throw new AppError(httpStatus.BAD_REQUEST, `Coupon "${cleanCode}" has already been used and is disabled`);
+    }
+    if (!couponDoc.isActive) {
+      throw new AppError(httpStatus.BAD_REQUEST, `Coupon "${cleanCode}" is disabled`);
+    }
+    if (couponDoc.expiryDate && new Date(couponDoc.expiryDate) < new Date()) {
+      throw new AppError(httpStatus.BAD_REQUEST, `Coupon "${cleanCode}" has expired`);
+    }
+
+    discountPercentage = couponDoc.discountPercentage;
+    discountAmount = Math.round((basePrice * couponDoc.discountPercentage) / 100);
+    finalPrice = Math.max(0, basePrice - discountAmount);
+    appliedCoupon = couponDoc;
+  }
+
+  // 2. If no coupon was applied, check for global scholarship discount
+  if (!appliedCoupon && basePrice > 0) {
+    try {
+      const { CourseDiscountServices } = await import("../courseDiscount/courseDiscount.service");
+      const discount = await CourseDiscountServices.getDiscount();
+      if (discount && discount.isActive && discount.percentage > 0) {
+        discountPercentage = discount.percentage;
+        discountAmount = Math.round((basePrice * discount.percentage) / 100);
+        finalPrice = Math.max(0, basePrice - discountAmount);
+      }
+    } catch (err) {
+      console.error("Error checking course discount in resolvePrice:", err);
+    }
   }
 
   return {
@@ -70,6 +99,8 @@ const resolvePrice = async (course: any, couponCode?: string) => {
     originalPrice,
     discountAmount,
     discountPercentage,
+    appliedCoupon,
+    couponCode: appliedCoupon ? appliedCoupon.code : couponCode,
     currency,
   };
 };
@@ -87,7 +118,7 @@ const createCheckout = async (
   if (!course || (course as any).isDeleted)
     throw new AppError(httpStatus.NOT_FOUND, "Course Not Found");
 
-  const { price, originalPrice, discountAmount, discountPercentage, currency } = await resolvePrice(course, couponCode);
+  const { price, originalPrice, discountAmount, discountPercentage, appliedCoupon, couponCode: resolvedCouponCode, currency } = await resolvePrice(course, couponCode);
   // Handle free courses - auto-complete order and enroll
   if (price === 0) {
     const order = await Order.create({
@@ -101,7 +132,7 @@ const createCheckout = async (
       provider: `"free"_${Math.random() * 100 * 100}`, // Special provider for free courses
       itemType,
       status: "paid", // Mark as completed immediately
-      couponCode,
+      couponCode: resolvedCouponCode,
       billingInfo
     });
 
@@ -109,14 +140,23 @@ const createCheckout = async (
       try {
         const { DonationSpend } = await import("../donationSpend/donationSpend.model");
         const studentUser = await User.findById(userId);
+
+        const spendTitle = appliedCoupon
+          ? `Scholarship Coupon: ${appliedCoupon.code} (${course.title || "Course"})`
+          : `Scholarship Subsidy: ${course.title || "Course"}`;
+
+        const spendDesc = appliedCoupon
+          ? `Full single-use scholarship coupon "${appliedCoupon.code}" (100%) applied for course enrollment "${course.title || "Course"}". Subsidized ৳${discountAmount} from original price ৳${originalPrice}.`
+          : `Full scholarship discount (${discountPercentage}%) subsidy applied for course enrollment "${course.title || "Course"}". Subsidized ৳${discountAmount} from original price ৳${originalPrice}.`;
+
         const spend = await DonationSpend.create({
-          title: `Scholarship Subsidy: ${course.title || "Course"}`,
+          title: spendTitle,
           fund: "educational-scholarships",
           amount: discountAmount,
           category: "Scholarships & Stipends",
           recipient: `${studentUser?.name || "Student"} (${studentUser?.email || ""})`,
-          description: `Full scholarship discount (${discountPercentage}%) subsidy applied for course enrollment "${course.title || "Course"}". Subsidized ৳${discountAmount} from original price ৳${originalPrice}.`,
-          handledBy: "Auto System (Scholarship Fund)",
+          description: spendDesc,
+          handledBy: appliedCoupon ? "Coupon System (Scholarship Fund)" : "Auto System (Scholarship Fund)",
           createdBy: userId as any,
           order: order._id,
           course: course._id,
@@ -125,6 +165,21 @@ const createCheckout = async (
           studentUser: userId as any,
           spentDate: new Date()
         });
+
+        // If a coupon was applied, mark it used & disabled
+        if (appliedCoupon) {
+          appliedCoupon.isUsed = true;
+          appliedCoupon.isActive = false; // Disabled once used
+          appliedCoupon.usedBy = userId as any;
+          appliedCoupon.usedAt = new Date();
+          appliedCoupon.usedOrder = order._id;
+          appliedCoupon.usedCourse = course._id;
+          appliedCoupon.reducedAmount = discountAmount;
+          appliedCoupon.originalPrice = originalPrice;
+          appliedCoupon.finalPaidPrice = 0;
+          appliedCoupon.donationSpendId = spend._id;
+          await appliedCoupon.save();
+        }
 
         order.scholarshipFundDeducted = true;
         order.donationSpendId = spend._id;
@@ -180,7 +235,7 @@ const createCheckout = async (
     provider,
     itemType,
     status: "pending",
-    couponCode,
+    couponCode: resolvedCouponCode,
     billingInfo
   });
 

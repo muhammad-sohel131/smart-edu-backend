@@ -23,3 +23,4 @@ router.get(
 );
 
 export const CourseDiscountRoutes = router;
+

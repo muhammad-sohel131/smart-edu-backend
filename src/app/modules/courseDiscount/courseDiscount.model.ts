@@ -32,3 +32,4 @@ const courseDiscountSchema = new Schema<ICourseDiscount>(
 
 export const CourseDiscount =
   models.CourseDiscount || model<ICourseDiscount>("CourseDiscount", courseDiscountSchema);
+

@@ -10,3 +10,4 @@ export interface ICourseDiscount {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
