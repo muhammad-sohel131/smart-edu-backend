@@ -20,10 +20,14 @@ const user_model_1 = require("../modules/user/user.model");
 const http_status_codes_1 = __importDefault(require("http-status-codes"));
 const user_interface_1 = require("../modules/user/user.interface");
 const checkAuth = (...roles) => (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
-        const accessToken = req.headers.authorization || req.cookies.accessToken;
+        let accessToken = req.headers.authorization || ((_a = req.cookies) === null || _a === void 0 ? void 0 : _a.accessToken);
         if (!accessToken) {
             throw new AppError_1.default(401, "Missing Access Token");
+        }
+        if (typeof accessToken === "string" && accessToken.startsWith("Bearer ")) {
+            accessToken = accessToken.slice(7).trim();
         }
         const verifiedToken = (0, jwt_1.verifyToken)(accessToken, env_1.envVars.JWT_ACCESS_SECRET);
         if (!verifiedToken) {
@@ -57,7 +61,10 @@ exports.checkAuth = checkAuth;
 const optionalAuth = (req, _res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
-        const accessToken = req.headers.authorization || ((_a = req.cookies) === null || _a === void 0 ? void 0 : _a.accessToken);
+        let accessToken = req.headers.authorization || ((_a = req.cookies) === null || _a === void 0 ? void 0 : _a.accessToken);
+        if (typeof accessToken === "string" && accessToken.startsWith("Bearer ")) {
+            accessToken = accessToken.slice(7).trim();
+        }
         if (accessToken) {
             const verifiedToken = (0, jwt_1.verifyToken)(accessToken, env_1.envVars.JWT_ACCESS_SECRET);
             if (verifiedToken) {
