@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -27,7 +60,7 @@ const createCourse = (payload) => __awaiter(void 0, void 0, void 0, function* ()
 });
 const listCourses = (query) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c, _d, _e;
-    const filter = {};
+    const filter = { isDeleted: false };
     const searchVal = (_b = (_a = (query.q || query.search)) === null || _a === void 0 ? void 0 : _a.toString()) === null || _b === void 0 ? void 0 : _b.trim();
     if (searchVal) {
         if (searchVal.length <= 8) {
@@ -89,7 +122,18 @@ const listCourses = (query) => __awaiter(void 0, void 0, void 0, function* () {
     const limit = Number((_d = query.limit) !== null && _d !== void 0 ? _d : 12);
     const skip = (page - 1) * limit;
     const sort = (_e = query.sort) !== null && _e !== void 0 ? _e : "-createdAt";
-    console.log(filter);
+    // Check global active course discount
+    let activeDiscount = null;
+    try {
+        const { CourseDiscountServices } = yield Promise.resolve().then(() => __importStar(require("../courseDiscount/courseDiscount.service")));
+        const d = yield CourseDiscountServices.getDiscount();
+        if (d && d.isActive && d.percentage > 0) {
+            activeDiscount = d;
+        }
+    }
+    catch (err) {
+        console.error("Error reading active discount:", err);
+    }
     // ⚡ Fetch items and total count
     const [items, total] = yield Promise.all([
         course_model_1.Course.find(filter)
@@ -99,10 +143,9 @@ const listCourses = (query) => __awaiter(void 0, void 0, void 0, function* () {
             .limit(limit),
         course_model_1.Course.countDocuments(filter),
     ]);
-    console.log(items);
-    // Calculate lesson count and duration for each course
+    // Calculate lesson count and duration for each course + apply global discount
     const itemsWithStats = yield Promise.all(items.map((course) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a;
+        var _a, _b, _c;
         const courseObj = course.toObject();
         // Get all units for this course
         const units = yield unit_model_1.Unit.find({ course: course._id, isDeleted: false }).select('_id');
@@ -145,7 +188,26 @@ const listCourses = (query) => __awaiter(void 0, void 0, void 0, function* () {
         else {
             duration = "0m";
         }
-        return Object.assign(Object.assign({}, courseObj), { lessonCount,
+        // Compute pricing with global discount if active
+        let finalPrice = (_b = courseObj.price) !== null && _b !== void 0 ? _b : 0;
+        const originalPrice = (_c = courseObj.price) !== null && _c !== void 0 ? _c : 0;
+        let oldPrice = undefined;
+        let discountPercentage = 0;
+        let discountAmount = 0;
+        let isScholarshipFunded = false;
+        if (activeDiscount && originalPrice > 0) {
+            discountPercentage = activeDiscount.percentage;
+            discountAmount = Math.round((originalPrice * discountPercentage) / 100);
+            finalPrice = Math.max(0, originalPrice - discountAmount);
+            oldPrice = originalPrice;
+            isScholarshipFunded = true;
+        }
+        return Object.assign(Object.assign({}, courseObj), { price: finalPrice, originalPrice,
+            oldPrice,
+            discountPercentage,
+            discountAmount,
+            isScholarshipFunded,
+            lessonCount,
             duration, totalDurationSeconds: totalSeconds });
     })));
     return {
@@ -154,18 +216,49 @@ const listCourses = (query) => __awaiter(void 0, void 0, void 0, function* () {
     };
 });
 const getCourseBySlug = (id) => __awaiter(void 0, void 0, void 0, function* () {
-    const course = yield course_model_1.Course.findOne({ slug: id, isDeleted: false });
-    // const course = await Course.findOne({ _id: id, isDeleted: false });
+    var _a, _b;
+    const course = yield course_model_1.Course.findOne({
+        $or: [
+            { slug: id },
+            ...(id.match(/^[0-9a-fA-F]{24}$/) ? [{ _id: id }] : [])
+        ],
+        isDeleted: false
+    }).populate("instructor", "name email picture");
     if (!course)
         throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, "Course Not Found");
-    return course;
+    const courseObj = course.toObject();
+    let finalPrice = (_a = courseObj.price) !== null && _a !== void 0 ? _a : 0;
+    const originalPrice = (_b = courseObj.price) !== null && _b !== void 0 ? _b : 0;
+    let oldPrice = undefined;
+    let discountPercentage = 0;
+    let discountAmount = 0;
+    let isScholarshipFunded = false;
+    try {
+        const { CourseDiscountServices } = yield Promise.resolve().then(() => __importStar(require("../courseDiscount/courseDiscount.service")));
+        const d = yield CourseDiscountServices.getDiscount();
+        if (d && d.isActive && d.percentage > 0 && originalPrice > 0) {
+            discountPercentage = d.percentage;
+            discountAmount = Math.round((originalPrice * discountPercentage) / 100);
+            finalPrice = Math.max(0, originalPrice - discountAmount);
+            oldPrice = originalPrice;
+            isScholarshipFunded = true;
+        }
+    }
+    catch (err) {
+        console.error("Error applying discount in getCourseBySlug:", err);
+    }
+    return Object.assign(Object.assign({}, courseObj), { price: finalPrice, originalPrice,
+        oldPrice,
+        discountPercentage,
+        discountAmount,
+        isScholarshipFunded });
 });
 const updateCourse = (id, updates, actor) => __awaiter(void 0, void 0, void 0, function* () {
     const course = yield course_model_1.Course.findOne({ slug: id });
     if (!course || course.isDeleted)
         throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, "Course Not Found");
     const isOwner = String(course.instructor) === String(actor.userId);
-    const isAdmin = actor.role === "ADMIN";
+    const isAdmin = actor.role === "ADMIN" || actor.role === "SUPER_ADMIN";
     if (!isOwner && !isAdmin)
         throw new AppError_1.default(http_status_codes_1.default.FORBIDDEN, "Forbidden");
     Object.assign(course, updates);

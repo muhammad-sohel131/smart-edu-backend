@@ -89,8 +89,59 @@ const cancelOrder = (orderId, payload, actor) => __awaiter(void 0, void 0, void 
 });
 const resolvePrice = (course, couponCode) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
-    // TODO: add coupon/discount logic here
-    return { price: (_a = course.price) !== null && _a !== void 0 ? _a : 0, currency: (_b = course.currency) !== null && _b !== void 0 ? _b : "BDT" };
+    const basePrice = Number((_a = course.price) !== null && _a !== void 0 ? _a : 0);
+    const currency = (_b = course.currency) !== null && _b !== void 0 ? _b : "BDT";
+    let originalPrice = basePrice;
+    let discountAmount = 0;
+    let discountPercentage = 0;
+    let finalPrice = basePrice;
+    let appliedCoupon = null;
+    // 1. Check coupon code if provided
+    if (couponCode && couponCode.trim() && basePrice > 0) {
+        const cleanCode = couponCode.trim().toUpperCase();
+        const { Coupon } = yield Promise.resolve().then(() => __importStar(require("../coupon/coupon.model")));
+        const couponDoc = yield Coupon.findOne({ code: cleanCode, isDeleted: false });
+        if (!couponDoc) {
+            throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, `Invalid coupon code "${couponCode}"`);
+        }
+        if (couponDoc.isUsed) {
+            throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, `Coupon "${cleanCode}" has already been used and is disabled`);
+        }
+        if (!couponDoc.isActive) {
+            throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, `Coupon "${cleanCode}" is disabled`);
+        }
+        if (couponDoc.expiryDate && new Date(couponDoc.expiryDate) < new Date()) {
+            throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, `Coupon "${cleanCode}" has expired`);
+        }
+        discountPercentage = couponDoc.discountPercentage;
+        discountAmount = Math.round((basePrice * couponDoc.discountPercentage) / 100);
+        finalPrice = Math.max(0, basePrice - discountAmount);
+        appliedCoupon = couponDoc;
+    }
+    // 2. If no coupon was applied, check for global scholarship discount
+    if (!appliedCoupon && basePrice > 0) {
+        try {
+            const { CourseDiscountServices } = yield Promise.resolve().then(() => __importStar(require("../courseDiscount/courseDiscount.service")));
+            const discount = yield CourseDiscountServices.getDiscount();
+            if (discount && discount.isActive && discount.percentage > 0) {
+                discountPercentage = discount.percentage;
+                discountAmount = Math.round((basePrice * discount.percentage) / 100);
+                finalPrice = Math.max(0, basePrice - discountAmount);
+            }
+        }
+        catch (err) {
+            console.error("Error checking course discount in resolvePrice:", err);
+        }
+    }
+    return {
+        price: finalPrice,
+        originalPrice,
+        discountAmount,
+        discountPercentage,
+        appliedCoupon,
+        couponCode: appliedCoupon ? appliedCoupon.code : couponCode,
+        currency,
+    };
 });
 /* ----------------------- NORMAL COURSE CHECKOUT ----------------------- */
 const createCheckout = (courseId, userId, provider, itemType, couponCode, billingInfo) => __awaiter(void 0, void 0, void 0, function* () {
@@ -98,20 +149,71 @@ const createCheckout = (courseId, userId, provider, itemType, couponCode, billin
     const course = yield course_model_1.Course.findById(courseId);
     if (!course || course.isDeleted)
         throw new AppError_1.default(http_status_codes_1.default.NOT_FOUND, "Course Not Found");
-    const { price, currency } = yield resolvePrice(course, couponCode);
+    const { price, originalPrice, discountAmount, discountPercentage, appliedCoupon, couponCode: resolvedCouponCode, currency } = yield resolvePrice(course, couponCode);
     // Handle free courses - auto-complete order and enroll
     if (price === 0) {
         const order = yield order_model_1.Order.create({
             user: userId,
             course: courseId,
             price,
+            originalPrice,
+            discountAmount,
+            discountPercentage,
             currency,
             provider: `"free"_${Math.random() * 100 * 100}`, // Special provider for free courses
             itemType,
             status: "paid", // Mark as completed immediately
-            couponCode,
+            couponCode: resolvedCouponCode,
             billingInfo
         });
+        if (discountAmount > 0) {
+            try {
+                const { DonationSpend } = yield Promise.resolve().then(() => __importStar(require("../donationSpend/donationSpend.model")));
+                const studentUser = yield user_model_1.User.findById(userId);
+                const spendTitle = appliedCoupon
+                    ? `Scholarship Coupon: ${appliedCoupon.code} (${course.title || "Course"})`
+                    : `Scholarship Subsidy: ${course.title || "Course"}`;
+                const spendDesc = appliedCoupon
+                    ? `Full single-use scholarship coupon "${appliedCoupon.code}" (100%) applied for course enrollment "${course.title || "Course"}". Subsidized ৳${discountAmount} from original price ৳${originalPrice}.`
+                    : `Full scholarship discount (${discountPercentage}%) subsidy applied for course enrollment "${course.title || "Course"}". Subsidized ৳${discountAmount} from original price ৳${originalPrice}.`;
+                const spend = yield DonationSpend.create({
+                    title: spendTitle,
+                    fund: "educational-scholarships",
+                    amount: discountAmount,
+                    category: "Scholarships & Stipends",
+                    recipient: `${(studentUser === null || studentUser === void 0 ? void 0 : studentUser.name) || "Student"} (${(studentUser === null || studentUser === void 0 ? void 0 : studentUser.email) || ""})`,
+                    description: spendDesc,
+                    handledBy: appliedCoupon ? "Coupon System (Scholarship Fund)" : "Auto System (Scholarship Fund)",
+                    createdBy: userId,
+                    order: order._id,
+                    course: course._id,
+                    discountPercentage,
+                    originalPrice,
+                    studentUser: userId,
+                    spentDate: new Date()
+                });
+                // If a coupon was applied, mark it used & disabled
+                if (appliedCoupon) {
+                    appliedCoupon.isUsed = true;
+                    appliedCoupon.isActive = false; // Disabled once used
+                    appliedCoupon.usedBy = userId;
+                    appliedCoupon.usedAt = new Date();
+                    appliedCoupon.usedOrder = order._id;
+                    appliedCoupon.usedCourse = course._id;
+                    appliedCoupon.reducedAmount = discountAmount;
+                    appliedCoupon.originalPrice = originalPrice;
+                    appliedCoupon.finalPaidPrice = 0;
+                    appliedCoupon.donationSpendId = spend._id;
+                    yield appliedCoupon.save();
+                }
+                order.scholarshipFundDeducted = true;
+                order.donationSpendId = spend._id;
+                yield order.save();
+            }
+            catch (deductErr) {
+                console.error("Error auto-deducting 100% scholarship discount:", deductErr);
+            }
+        }
         // Auto-enroll the user in the free course
         const { EnrollmentServices } = yield Promise.resolve().then(() => __importStar(require('../enrollment/enrollment.services')));
         yield EnrollmentServices.enrollSelf(courseId, userId, (_a = course === null || course === void 0 ? void 0 : course.instructor) === null || _a === void 0 ? void 0 : _a.toString());
@@ -139,11 +241,14 @@ const createCheckout = (courseId, userId, provider, itemType, couponCode, billin
         user: userId,
         course: courseId,
         price,
+        originalPrice,
+        discountAmount,
+        discountPercentage,
         currency,
         provider,
         itemType,
         status: "pending",
-        couponCode,
+        couponCode: resolvedCouponCode,
         billingInfo
     });
     const session = yield payment_services_1.PaymentService.createCheckoutSession({
@@ -161,10 +266,11 @@ const createCheckout = (courseId, userId, provider, itemType, couponCode, billin
     return { orderId: String(order._id), checkoutUrl: session.checkoutUrl };
 });
 const createDonationCheckout = (fund_1, userId_1, ...args_1) => __awaiter(void 0, [fund_1, userId_1, ...args_1], void 0, function* (fund, userId, provider = "sslcommerz", amount = 0, donorInfo) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d, _e;
     let linkedUserId = userId;
+    let existingUser = null;
     if (!linkedUserId && ((donorInfo === null || donorInfo === void 0 ? void 0 : donorInfo.phone) || (donorInfo === null || donorInfo === void 0 ? void 0 : donorInfo.email))) {
-        const existingUser = yield user_model_1.User.findOne({
+        existingUser = yield user_model_1.User.findOne({
             $or: [
                 ...(donorInfo.phone ? [{ phone: donorInfo.phone.trim() }] : []),
                 ...(donorInfo.email ? [{ email: donorInfo.email.trim() }] : [])
@@ -174,13 +280,18 @@ const createDonationCheckout = (fund_1, userId_1, ...args_1) => __awaiter(void 0
             linkedUserId = existingUser._id;
         }
     }
+    else if (linkedUserId) {
+        existingUser = yield user_model_1.User.findById(linkedUserId);
+    }
     const cleanPhone = ((_a = donorInfo === null || donorInfo === void 0 ? void 0 : donorInfo.phone) === null || _a === void 0 ? void 0 : _a.trim()) || "";
+    const donorPhoto = ((_b = donorInfo === null || donorInfo === void 0 ? void 0 : donorInfo.image) === null || _b === void 0 ? void 0 : _b.trim()) || ((_c = donorInfo === null || donorInfo === void 0 ? void 0 : donorInfo.avatar) === null || _c === void 0 ? void 0 : _c.trim()) || (existingUser === null || existingUser === void 0 ? void 0 : existingUser.picture) || "";
     const order = yield order_model_1.Order.create({
         user: linkedUserId,
-        donorName: (_b = donorInfo === null || donorInfo === void 0 ? void 0 : donorInfo.name) === null || _b === void 0 ? void 0 : _b.trim(),
-        donorEmail: (_c = donorInfo === null || donorInfo === void 0 ? void 0 : donorInfo.email) === null || _c === void 0 ? void 0 : _c.trim(),
+        donorName: (_d = donorInfo === null || donorInfo === void 0 ? void 0 : donorInfo.name) === null || _d === void 0 ? void 0 : _d.trim(),
+        donorEmail: (_e = donorInfo === null || donorInfo === void 0 ? void 0 : donorInfo.email) === null || _e === void 0 ? void 0 : _e.trim(),
         donorPhone: cleanPhone,
-        billingInfo: donorInfo,
+        donorImage: donorPhoto,
+        billingInfo: Object.assign(Object.assign({}, donorInfo), { image: donorPhoto }),
         fund: fund,
         price: amount,
         currency: "BDT",
@@ -195,7 +306,7 @@ const createDonationCheckout = (fund_1, userId_1, ...args_1) => __awaiter(void 0
         currency: 'BDT',
         userId: linkedUserId ? String(linkedUserId) : String(order._id),
         source: "Donation",
-        billingInfo: donorInfo
+        billingInfo: Object.assign(Object.assign({}, donorInfo), { image: donorPhoto })
     });
     order.providerSessionId = session.sessionId;
     yield order.save();
@@ -345,9 +456,14 @@ const getOrders = (...args_1) => __awaiter(void 0, [...args_1], void 0, function
             donorName: 1,
             donorEmail: 1,
             donorPhone: 1,
+            donorImage: 1,
             billingInfo: 1,
             amount: "$price",
             currency: "$currency",
+            originalPrice: 1,
+            discountAmount: 1,
+            discountPercentage: 1,
+            scholarshipFundDeducted: 1,
             date: "$createdAt",
             status: "$status",
             itemType: "$itemType",
@@ -375,8 +491,8 @@ const getOrders = (...args_1) => __awaiter(void 0, [...args_1], void 0, function
     const total = ((_a = countResult[0]) === null || _a === void 0 ? void 0 : _a.total) || 0;
     // Format the data
     const formattedOrders = orders.map(order => {
-        var _a;
-        return (Object.assign(Object.assign({}, order), { donorName: order.donorName || order.userName, donorEmail: order.donorEmail || order.userEmail, donorPhone: order.donorPhone || order.userPhone || ((_a = order.billingInfo) === null || _a === void 0 ? void 0 : _a.phone), amountFormatted: `${order.amount.toFixed(2)} ${order.currency.toUpperCase()}`, dateFormatted: new Date(order.date).toLocaleDateString('en-US', {
+        var _a, _b, _c;
+        return (Object.assign(Object.assign({}, order), { donorName: order.donorName || order.userName, donorEmail: order.donorEmail || order.userEmail, donorPhone: order.donorPhone || order.userPhone || ((_a = order.billingInfo) === null || _a === void 0 ? void 0 : _a.phone), donorImage: order.donorImage || ((_b = order.billingInfo) === null || _b === void 0 ? void 0 : _b.image) || ((_c = order.userData) === null || _c === void 0 ? void 0 : _c.picture) || null, originalPrice: order.originalPrice, discountAmount: order.discountAmount || 0, discountPercentage: order.discountPercentage || 0, scholarshipFundDeducted: order.scholarshipFundDeducted || false, amountFormatted: `${order.amount.toFixed(2)} ${order.currency.toUpperCase()}`, dateFormatted: new Date(order.date).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric'

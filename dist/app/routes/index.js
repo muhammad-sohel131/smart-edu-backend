@@ -24,6 +24,8 @@ const category_routes_1 = require("../modules/category/category.routes");
 const city_routes_1 = require("../modules/city/city.routes");
 const school_routes_1 = require("../modules/school/school.routes");
 const donationSpend_routes_1 = require("../modules/donationSpend/donationSpend.routes");
+const courseDiscount_routes_1 = require("../modules/courseDiscount/courseDiscount.routes");
+const coupon_routes_1 = require("../modules/coupon/coupon.routes");
 exports.router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -113,6 +115,14 @@ const moduleRoutes = [
     {
         path: "/donation-spends",
         route: donationSpend_routes_1.DonationSpendRoutes
+    },
+    {
+        path: "/course-discount",
+        route: courseDiscount_routes_1.CourseDiscountRoutes
+    },
+    {
+        path: "/coupons",
+        route: coupon_routes_1.CouponRoutes
     },
 ];
 moduleRoutes.forEach(route => {

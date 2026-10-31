@@ -8,7 +8,6 @@ const express_1 = require("express");
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const checkAuth_1 = require("../../middlewares/checkAuth");
-const user_interface_1 = require("../user/user.interface");
 const upload_controller_1 = require("./upload.controller");
 const router = (0, express_1.Router)();
 // ✅ Use memory storage for Vercel (serverless-compatible)
@@ -20,7 +19,7 @@ const upload = (0, multer_1.default)({
     },
     fileFilter: (req, file, cb) => {
         // Optional: Validate file types
-        const allowedTypes = /jpeg|jpg|png|gif|pdf|mp4|mov|avi|doc|docx|ppt|pptx|txt|csv/;
+        const allowedTypes = /jpeg|jpg|png|gif|webp|svg|pdf|mp4|mov|avi|doc|docx|ppt|pptx|txt|csv/;
         const extname = allowedTypes.test(path_1.default.extname(file.originalname).toLowerCase());
         if (extname) {
             return cb(null, true);
@@ -30,5 +29,6 @@ const upload = (0, multer_1.default)({
         }
     },
 });
-router.post("/", (0, checkAuth_1.checkAuth)(user_interface_1.Role.STUDENT, user_interface_1.Role.INSTRUCTOR, user_interface_1.Role.ADMIN, user_interface_1.Role.SUPER_ADMIN), upload.single("file"), upload_controller_1.UploadController.uploadFile);
+router.post("/", checkAuth_1.optionalAuth, upload.single("file"), upload_controller_1.UploadController.uploadFile);
+router.post("/public", upload.single("file"), upload_controller_1.UploadController.uploadFile);
 exports.UploadRoutes = router;

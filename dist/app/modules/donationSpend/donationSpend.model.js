@@ -49,6 +49,24 @@ const donationSpendSchema = new mongoose_1.Schema({
         type: mongoose_1.Schema.Types.ObjectId,
         ref: "User"
     },
+    order: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "Order"
+    },
+    course: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "Course"
+    },
+    discountPercentage: {
+        type: Number
+    },
+    originalPrice: {
+        type: Number
+    },
+    studentUser: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "User"
+    },
     isDeleted: {
         type: Boolean,
         default: false

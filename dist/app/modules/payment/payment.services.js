@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -34,7 +67,7 @@ const createCheckoutSession = (input) => __awaiter(void 0, void 0, void 0, funct
 });
 // Webhook handlers (normalized)
 const markPaidFromWebhook = (provider, normalized) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b, _c;
     const order = yield order_model_1.Order.findById(normalized.orderId);
     if (!order) {
         console.error(`❌ Order not found: ${normalized.orderId}`);
@@ -65,15 +98,77 @@ const markPaidFromWebhook = (provider, normalized) => __awaiter(void 0, void 0, 
         console.error(`❌ Amount mismatch - Expected at least: ${expectedAmount - 1}, Received: ${normalized.amount}`);
         throw new AppError_1.default(http_status_codes_1.default.BAD_REQUEST, "Payment amount does not match order amount");
     }
+    const studentUserId = normalized.userId || (order.user ? String(order.user) : undefined);
+    const courseIdToEnroll = normalized.courseId || (order.course ? String(order.course) : undefined);
     // Mark order as paid (idempotent update)
     if (order.status !== "paid") {
         order.providerPaymentId = normalized.providerPaymentId;
         order.providerSessionId = (_a = normalized.providerSessionId) !== null && _a !== void 0 ? _a : order.providerSessionId;
         order.status = "paid";
+        // AUTO-DEDUCT from Scholarship Fund if a discount was applied!
+        if (order.itemType === "course" && order.discountAmount > 0 && !order.scholarshipFundDeducted) {
+            try {
+                const { DonationSpend } = yield Promise.resolve().then(() => __importStar(require("../donationSpend/donationSpend.model")));
+                const { User } = yield Promise.resolve().then(() => __importStar(require("../user/user.model")));
+                const studentUser = studentUserId ? yield User.findById(studentUserId) : null;
+                const courseDoc = targetCourseId ? yield course_model_1.Course.findById(targetCourseId) : null;
+                let couponDoc = null;
+                if (order.couponCode) {
+                    try {
+                        const { Coupon } = yield Promise.resolve().then(() => __importStar(require("../coupon/coupon.model")));
+                        couponDoc = yield Coupon.findOne({ code: order.couponCode.trim().toUpperCase(), isDeleted: false });
+                    }
+                    catch (cErr) {
+                        console.error("Error looking up coupon in payment webhook:", cErr);
+                    }
+                }
+                const spendTitle = couponDoc
+                    ? `Scholarship Coupon: ${couponDoc.code} (${(courseDoc === null || courseDoc === void 0 ? void 0 : courseDoc.title) || "Course"})`
+                    : `Scholarship Subsidy: ${(courseDoc === null || courseDoc === void 0 ? void 0 : courseDoc.title) || "Course"}`;
+                const spendDesc = couponDoc
+                    ? `Single-use scholarship coupon "${couponDoc.code}" (${order.discountPercentage}%) redeemed by ${(studentUser === null || studentUser === void 0 ? void 0 : studentUser.name) || "Student"} for course "${(courseDoc === null || courseDoc === void 0 ? void 0 : courseDoc.title) || "Course"}". Subsidized ৳${order.discountAmount} from original price ৳${order.originalPrice}.`
+                    : `Automatic scholarship discount (${order.discountPercentage}%) subsidy applied for course enrollment "${(courseDoc === null || courseDoc === void 0 ? void 0 : courseDoc.title) || "Course"}". Reduced ৳${order.discountAmount} from original price ৳${order.originalPrice}.`;
+                const spend = yield DonationSpend.create({
+                    title: spendTitle,
+                    fund: "educational-scholarships",
+                    amount: order.discountAmount,
+                    category: "Scholarships & Stipends",
+                    recipient: `${(studentUser === null || studentUser === void 0 ? void 0 : studentUser.name) || ((_b = order.billingInfo) === null || _b === void 0 ? void 0 : _b.name) || "Student"} (${(studentUser === null || studentUser === void 0 ? void 0 : studentUser.email) || ((_c = order.billingInfo) === null || _c === void 0 ? void 0 : _c.email) || ""})`,
+                    description: spendDesc,
+                    handledBy: couponDoc ? "Coupon System (Scholarship Fund)" : "Auto System (Scholarship Fund)",
+                    createdBy: studentUserId ? studentUserId : undefined,
+                    order: order._id,
+                    course: courseDoc === null || courseDoc === void 0 ? void 0 : courseDoc._id,
+                    discountPercentage: order.discountPercentage,
+                    originalPrice: order.originalPrice,
+                    studentUser: studentUserId ? studentUserId : undefined,
+                    spentDate: new Date()
+                });
+                // Mark coupon as used and disabled immediately
+                if (couponDoc) {
+                    couponDoc.isUsed = true;
+                    couponDoc.isActive = false; // Coupon is disabled once used
+                    couponDoc.usedBy = studentUserId ? studentUserId : undefined;
+                    couponDoc.usedAt = new Date();
+                    couponDoc.usedOrder = order._id;
+                    couponDoc.usedCourse = courseDoc === null || courseDoc === void 0 ? void 0 : courseDoc._id;
+                    couponDoc.reducedAmount = order.discountAmount;
+                    couponDoc.originalPrice = order.originalPrice;
+                    couponDoc.finalPaidPrice = order.price;
+                    couponDoc.donationSpendId = spend._id;
+                    yield couponDoc.save();
+                    console.log(`✅ Single-use coupon ${couponDoc.code} marked as used & disabled`);
+                }
+                order.scholarshipFundDeducted = true;
+                order.donationSpendId = spend._id;
+                console.log(`✅ Auto-deducted ৳${order.discountAmount} from Scholarship Fund for Order ${order._id}`);
+            }
+            catch (deductErr) {
+                console.error("Error creating auto donation spend deduction:", deductErr);
+            }
+        }
         yield order.save();
     }
-    const studentUserId = normalized.userId || (order.user ? String(order.user) : undefined);
-    const courseIdToEnroll = normalized.courseId || (order.course ? String(order.course) : undefined);
     /* --------------------------------------------------------------------
      * 🎓 HANDLE COURSE / PACKAGE ENROLLMENT
      * ------------------------------------------------------------------ */
@@ -144,15 +239,6 @@ const markPaidFromWebhook = (provider, normalized) => __awaiter(void 0, void 0, 
             console.warn(`⚠️ Event not found for order ${order._id}`);
         }
     }
-    /* --------------------------------------------------------------------
-     * 📜 Audit Log (optional)
-     * ------------------------------------------------------------------ */
-    // await ActivityLogServices.record({
-    //   userId: normalized.userId,
-    //   action: "payment_completed",
-    //   referenceId: order._id,
-    //   meta: { provider, amount: order.amount, currency: order.currency },
-    // });
     return order;
 });
 exports.PaymentService = {
