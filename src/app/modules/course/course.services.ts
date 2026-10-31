@@ -15,9 +15,8 @@ const createCourse = async (payload: Omit<ICourse, "slug" | "isDeleted">) => {
 };
 
 const listCourses = async (query: any) => {
-  const filter: FilterQuery<ICourse> = {  };
+  const filter: FilterQuery<ICourse> = { isDeleted: false };
 
-  
   const searchVal = (query.q || query.search)?.toString()?.trim();
   if (searchVal) {
     if (searchVal.length <= 8) {
@@ -81,7 +80,18 @@ const listCourses = async (query: any) => {
   const skip = (page - 1) * limit;
   const sort = query.sort ?? "-createdAt";
 
-  console.log(filter)
+  // Check global active course discount
+  let activeDiscount: any = null;
+  try {
+    const { CourseDiscountServices } = await import("../courseDiscount/courseDiscount.service");
+    const d = await CourseDiscountServices.getDiscount();
+    if (d && d.isActive && d.percentage > 0) {
+      activeDiscount = d;
+    }
+  } catch (err) {
+    console.error("Error reading active discount:", err);
+  }
+
   // ⚡ Fetch items and total count
   const [items, total] = await Promise.all([
     Course.find(filter)
@@ -92,12 +102,11 @@ const listCourses = async (query: any) => {
     Course.countDocuments(filter),
   ]);
 
-  console.log(items)
-  // Calculate lesson count and duration for each course
+  // Calculate lesson count and duration for each course + apply global discount
   const itemsWithStats = await Promise.all(
     items.map(async (course) => {
       const courseObj = course.toObject();
-      
+
       // Get all units for this course
       const units = await Unit.find({ course: course._id, isDeleted: false }).select('_id');
       const unitIds = units.map(u => u._id);
@@ -141,9 +150,31 @@ const listCourses = async (query: any) => {
       } else {
         duration = "0m";
       }
+
+      // Compute pricing with global discount if active
+      let finalPrice = courseObj.price ?? 0;
+      const originalPrice = courseObj.price ?? 0;
+      let oldPrice: number | undefined = undefined;
+      let discountPercentage = 0;
+      let discountAmount = 0;
+      let isScholarshipFunded = false;
+
+      if (activeDiscount && originalPrice > 0) {
+        discountPercentage = activeDiscount.percentage;
+        discountAmount = Math.round((originalPrice * discountPercentage) / 100);
+        finalPrice = Math.max(0, originalPrice - discountAmount);
+        oldPrice = originalPrice;
+        isScholarshipFunded = true;
+      }
       
       return {
         ...courseObj,
+        price: finalPrice,
+        originalPrice,
+        oldPrice,
+        discountPercentage,
+        discountAmount,
+        isScholarshipFunded,
         lessonCount,
         duration,
         totalDurationSeconds: totalSeconds
@@ -158,10 +189,47 @@ const listCourses = async (query: any) => {
 };
 
 const getCourseBySlug = async (id: string) => {
-  const course = await Course.findOne({ slug: id, isDeleted: false });
-    // const course = await Course.findOne({ _id: id, isDeleted: false });
+  const course = await Course.findOne({
+    $or: [
+      { slug: id },
+      ...(id.match(/^[0-9a-fA-F]{24}$/) ? [{ _id: id }] : [])
+    ],
+    isDeleted: false
+  }).populate("instructor", "name email picture");
+
   if (!course) throw new AppError(httpStatus.NOT_FOUND, "Course Not Found");
-  return course;
+
+  const courseObj = course.toObject();
+  let finalPrice = courseObj.price ?? 0;
+  const originalPrice = courseObj.price ?? 0;
+  let oldPrice: number | undefined = undefined;
+  let discountPercentage = 0;
+  let discountAmount = 0;
+  let isScholarshipFunded = false;
+
+  try {
+    const { CourseDiscountServices } = await import("../courseDiscount/courseDiscount.service");
+    const d = await CourseDiscountServices.getDiscount();
+    if (d && d.isActive && d.percentage > 0 && originalPrice > 0) {
+      discountPercentage = d.percentage;
+      discountAmount = Math.round((originalPrice * discountPercentage) / 100);
+      finalPrice = Math.max(0, originalPrice - discountAmount);
+      oldPrice = originalPrice;
+      isScholarshipFunded = true;
+    }
+  } catch (err) {
+    console.error("Error applying discount in getCourseBySlug:", err);
+  }
+
+  return {
+    ...courseObj,
+    price: finalPrice,
+    originalPrice,
+    oldPrice,
+    discountPercentage,
+    discountAmount,
+    isScholarshipFunded
+  };
 };
 
 const updateCourse = async (
@@ -173,7 +241,7 @@ const updateCourse = async (
   if (!course || course.isDeleted) throw new AppError(httpStatus.NOT_FOUND, "Course Not Found");
 
   const isOwner = String(course.instructor) === String(actor.userId);
-  const isAdmin = actor.role === "ADMIN";
+  const isAdmin = actor.role === "ADMIN" || actor.role === "SUPER_ADMIN";
   if (!isOwner && !isAdmin) throw new AppError(httpStatus.FORBIDDEN, "Forbidden");
 
   Object.assign(course, updates);

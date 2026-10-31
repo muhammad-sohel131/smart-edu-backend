@@ -45,8 +45,33 @@ const cancelOrder = async (
 
 
 const resolvePrice = async (course: any, couponCode?: string) => {
-  // TODO: add coupon/discount logic here
-  return { price: course.price ?? 0, currency: course.currency ?? "BDT" };
+  const basePrice = Number(course.price ?? 0);
+  const currency = course.currency ?? "BDT";
+
+  let originalPrice = basePrice;
+  let discountAmount = 0;
+  let discountPercentage = 0;
+  let finalPrice = basePrice;
+
+  try {
+    const { CourseDiscountServices } = await import("../courseDiscount/courseDiscount.service");
+    const discount = await CourseDiscountServices.getDiscount();
+    if (discount && discount.isActive && discount.percentage > 0 && basePrice > 0) {
+      discountPercentage = discount.percentage;
+      discountAmount = Math.round((basePrice * discount.percentage) / 100);
+      finalPrice = Math.max(0, basePrice - discountAmount);
+    }
+  } catch (err) {
+    console.error("Error checking course discount in resolvePrice:", err);
+  }
+
+  return {
+    price: finalPrice,
+    originalPrice,
+    discountAmount,
+    discountPercentage,
+    currency,
+  };
 };
 
 /* ----------------------- NORMAL COURSE CHECKOUT ----------------------- */
@@ -62,13 +87,16 @@ const createCheckout = async (
   if (!course || (course as any).isDeleted)
     throw new AppError(httpStatus.NOT_FOUND, "Course Not Found");
 
-  const { price, currency } = await resolvePrice(course, couponCode);
+  const { price, originalPrice, discountAmount, discountPercentage, currency } = await resolvePrice(course, couponCode);
   // Handle free courses - auto-complete order and enroll
   if (price === 0) {
     const order = await Order.create({
       user: userId,
       course: courseId,
       price,
+      originalPrice,
+      discountAmount,
+      discountPercentage,
       currency,
       provider: `"free"_${Math.random() * 100 * 100}`, // Special provider for free courses
       itemType,
@@ -76,6 +104,35 @@ const createCheckout = async (
       couponCode,
       billingInfo
     });
+
+    if (discountAmount > 0) {
+      try {
+        const { DonationSpend } = await import("../donationSpend/donationSpend.model");
+        const studentUser = await User.findById(userId);
+        const spend = await DonationSpend.create({
+          title: `Scholarship Subsidy: ${course.title || "Course"}`,
+          fund: "educational-scholarships",
+          amount: discountAmount,
+          category: "Scholarships & Stipends",
+          recipient: `${studentUser?.name || "Student"} (${studentUser?.email || ""})`,
+          description: `Full scholarship discount (${discountPercentage}%) subsidy applied for course enrollment "${course.title || "Course"}". Subsidized ৳${discountAmount} from original price ৳${originalPrice}.`,
+          handledBy: "Auto System (Scholarship Fund)",
+          createdBy: userId as any,
+          order: order._id,
+          course: course._id,
+          discountPercentage,
+          originalPrice,
+          studentUser: userId as any,
+          spentDate: new Date()
+        });
+
+        order.scholarshipFundDeducted = true;
+        order.donationSpendId = spend._id;
+        await order.save();
+      } catch (deductErr) {
+        console.error("Error auto-deducting 100% scholarship discount:", deductErr);
+      }
+    }
 
 
     // Auto-enroll the user in the free course
@@ -116,6 +173,9 @@ const createCheckout = async (
     user: userId,
     course: courseId,
     price,
+    originalPrice,
+    discountAmount,
+    discountPercentage,
     currency,
     provider,
     itemType,
@@ -375,6 +435,10 @@ const getOrders = async (query: any = {}) => {
         billingInfo: 1,
         amount: "$price",
         currency: "$currency",
+        originalPrice: 1,
+        discountAmount: 1,
+        discountPercentage: 1,
+        scholarshipFundDeducted: 1,
         date: "$createdAt",
         status: "$status",
         itemType: "$itemType",
@@ -415,6 +479,10 @@ const getOrders = async (query: any = {}) => {
     donorEmail: order.donorEmail || order.userEmail,
     donorPhone: order.donorPhone || order.userPhone || order.billingInfo?.phone,
     donorImage: order.donorImage || order.billingInfo?.image || order.userData?.picture || null,
+    originalPrice: order.originalPrice,
+    discountAmount: order.discountAmount || 0,
+    discountPercentage: order.discountPercentage || 0,
+    scholarshipFundDeducted: order.scholarshipFundDeducted || false,
     amountFormatted: `${order.amount.toFixed(2)} ${order.currency.toUpperCase()}`,
     dateFormatted: new Date(order.date).toLocaleDateString('en-US', {
       year: 'numeric',

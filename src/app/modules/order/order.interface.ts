@@ -18,10 +18,15 @@ export interface IOrder {
     fund?: string;
 
     event?: Types.ObjectId;
-    billingInfo?: object,
+    billingInfo?: object;
 
+    price: number;         // final price paid by user
+    originalPrice?: number; // original price before discount
+    discountAmount?: number; // amount subsidized / reduced
+    discountPercentage?: number; // percentage of discount
+    scholarshipFundDeducted?: boolean; // whether deducted from scholarship fund
+    donationSpendId?: Types.ObjectId; // reference to DonationSpend
 
-    price: number;         // smallest unit (e.g., cents)
     currency: string;      // "USD","MYR","BDT", etc.
 
     provider: PaymentProvider;

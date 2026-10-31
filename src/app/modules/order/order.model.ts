@@ -13,6 +13,11 @@ const OrderSchema = new Schema<IOrder>({
     billingInfo: {type: Object},
     event: { type: Schema.Types.ObjectId, ref: "Event" },
     price: { type: Number, required: true },
+    originalPrice: { type: Number },
+    discountAmount: { type: Number, default: 0 },
+    discountPercentage: { type: Number, default: 0 },
+    scholarshipFundDeducted: { type: Boolean, default: false },
+    donationSpendId: { type: Schema.Types.ObjectId, ref: "DonationSpend" },
     currency: { type: String, required: true },
     provider: { type: String, required: true },
     providerSessionId: { type: String, index: true },
@@ -22,8 +27,5 @@ const OrderSchema = new Schema<IOrder>({
     meta: { type: Schema.Types.Mixed },
     isDeleted: { type: Boolean, default: false }
 }, { timestamps: true, versionKey: false });
-
-// OrderSchema.index({ user: 1, course: 1, status: 1 });
-// OrderSchema.index({ provider: 1, providerPaymentId: 1 }, { unique: true, sparse: true });
 
 export const Order = models.Order || model<IOrder>("Order", OrderSchema);

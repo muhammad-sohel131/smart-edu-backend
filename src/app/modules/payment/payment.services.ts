@@ -71,16 +71,50 @@ const markPaidFromWebhook = async (
     throw new AppError(httpStatus.BAD_REQUEST, "Payment amount does not match order amount");
   }
 
+  const studentUserId = normalized.userId || (order.user ? String(order.user) : undefined);
+  const courseIdToEnroll = normalized.courseId || (order.course ? String(order.course) : undefined);
+
   // Mark order as paid (idempotent update)
   if (order.status !== "paid") {
     order.providerPaymentId = normalized.providerPaymentId;
     order.providerSessionId = normalized.providerSessionId ?? order.providerSessionId;
     order.status = "paid";
+
+    // AUTO-DEDUCT from Scholarship Fund if a discount was applied!
+    if (order.itemType === "course" && (order as any).discountAmount > 0 && !(order as any).scholarshipFundDeducted) {
+      try {
+        const { DonationSpend } = await import("../donationSpend/donationSpend.model");
+        const { User } = await import("../user/user.model");
+        const studentUser = studentUserId ? await User.findById(studentUserId) : null;
+        const courseDoc = targetCourseId ? await Course.findById(targetCourseId) : null;
+
+        const spend = await DonationSpend.create({
+          title: `Scholarship Subsidy: ${courseDoc?.title || "Course"}`,
+          fund: "educational-scholarships",
+          amount: (order as any).discountAmount,
+          category: "Scholarships & Stipends",
+          recipient: `${studentUser?.name || (order as any).billingInfo?.name || "Student"} (${studentUser?.email || (order as any).billingInfo?.email || ""})`,
+          description: `Automatic scholarship discount (${(order as any).discountPercentage}%) subsidy applied for course enrollment "${courseDoc?.title || "Course"}". Reduced ৳${(order as any).discountAmount} from original price ৳${(order as any).originalPrice}.`,
+          handledBy: "Auto System (Scholarship Fund)",
+          createdBy: studentUserId ? (studentUserId as any) : undefined,
+          order: order._id,
+          course: courseDoc?._id,
+          discountPercentage: (order as any).discountPercentage,
+          originalPrice: (order as any).originalPrice,
+          studentUser: studentUserId ? (studentUserId as any) : undefined,
+          spentDate: new Date()
+        });
+
+        (order as any).scholarshipFundDeducted = true;
+        (order as any).donationSpendId = spend._id;
+        console.log(`✅ Auto-deducted ৳${(order as any).discountAmount} from Scholarship Fund for Order ${order._id}`);
+      } catch (deductErr) {
+        console.error("Error creating auto donation spend deduction:", deductErr);
+      }
+    }
+
     await order.save();
   }
-
-  const studentUserId = normalized.userId || (order.user ? String(order.user) : undefined);
-  const courseIdToEnroll = normalized.courseId || (order.course ? String(order.course) : undefined);
 
   /* --------------------------------------------------------------------
    * 🎓 HANDLE COURSE / PACKAGE ENROLLMENT
@@ -160,16 +194,6 @@ const markPaidFromWebhook = async (
       console.warn(`⚠️ Event not found for order ${order._id}`);
     }
   }
-
-  /* --------------------------------------------------------------------
-   * 📜 Audit Log (optional)
-   * ------------------------------------------------------------------ */
-  // await ActivityLogServices.record({
-  //   userId: normalized.userId,
-  //   action: "payment_completed",
-  //   referenceId: order._id,
-  //   meta: { provider, amount: order.amount, currency: order.currency },
-  // });
 
   return order;
 };

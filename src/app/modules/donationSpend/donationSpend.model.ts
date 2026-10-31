@@ -49,6 +49,24 @@ const donationSpendSchema = new Schema<IDonationSpend>(
       type: Schema.Types.ObjectId,
       ref: "User"
     },
+    order: {
+      type: Schema.Types.ObjectId,
+      ref: "Order"
+    },
+    course: {
+      type: Schema.Types.ObjectId,
+      ref: "Course"
+    },
+    discountPercentage: {
+      type: Number
+    },
+    originalPrice: {
+      type: Number
+    },
+    studentUser: {
+      type: Schema.Types.ObjectId,
+      ref: "User"
+    },
     isDeleted: {
       type: Boolean,
       default: false
