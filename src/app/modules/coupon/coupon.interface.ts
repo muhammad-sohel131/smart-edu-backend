@@ -22,3 +22,4 @@ export interface ICoupon {
   createdAt?: Date;
   updatedAt?: Date;
 }
+

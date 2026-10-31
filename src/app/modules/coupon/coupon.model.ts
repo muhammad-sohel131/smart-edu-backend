@@ -83,3 +83,4 @@ const couponSchema = new Schema<ICoupon>(
 );
 
 export const Coupon = model<ICoupon>("Coupon", couponSchema);
+
